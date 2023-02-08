@@ -36,7 +36,8 @@
  * Author: Bence Magyar
  */
 
-#include <tf/transform_datatypes.h>
+//#include <tf/transform_datatypes.h>
+// we'll need to include tf2_msgs and tf2 seperately
 
 #include <urdf_parser/urdf_parser.h>
 
@@ -45,34 +46,37 @@
 #include <mecanum_drive_controller/mecanum_drive_controller.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-static bool isCylinderOrSphere(const urdf::LinkConstSharedPtr& link)
-{
-  if(!link)
-  {
-    ROS_ERROR("Link == NULL.");
-    return false;
-  }
 
-  if(!link->collision)
-  {
-    ROS_ERROR_STREAM("Link " << link->name << " does not have collision description. Add collision description for link to urdf.");
-    return false;
-  }
+// TODO: unsure how to port the following BECAUSE we need a nodehandle to log stuff now
 
-  if(!link->collision->geometry)
-  {
-    ROS_ERROR_STREAM("Link " << link->name << " does not have collision geometry description. Add collision geometry description for link to urdf.");
-    return false;
-  }
+//static bool isCylinderOrSphere(const urdf::LinkConstSharedPtr& link)
+//{
+//  if(!link)
+//  {
+//    RCLCPP_ERROR("Link == NULL.");
+//    return false;
+//  }
 
-  if(link->collision->geometry->type != urdf::Geometry::CYLINDER && link->collision->geometry->type != urdf::Geometry::SPHERE)
-  {
-    ROS_ERROR_STREAM("Link " << link->name << " does not have cylinder nor sphere geometry");
-    return false;
-  }
+//  if(!link->collision)
+//  {
+//    ROS_ERROR_STREAM("Link " << link->name << " does not have collision description. Add collision description for link to urdf.");
+//    return false;
+//  }
 
-  return true;
-}
+//  if(!link->collision->geometry)
+//  {
+//    ROS_ERROR_STREAM("Link " << link->name << " does not have collision geometry description. Add collision geometry description for link to urdf.");
+//    return false;
+//  }
+
+//  if(link->collision->geometry->type != urdf::Geometry::CYLINDER && link->collision->geometry->type != urdf::Geometry::SPHERE)
+//  {
+//    ROS_ERROR_STREAM("Link " << link->name << " does not have cylinder nor sphere geometry");
+//    return false;
+//  }
+
+//  return true;
+//}
 
 namespace mecanum_drive_controller
 {
@@ -94,9 +98,9 @@ MecanumDriveController::MecanumDriveController()
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-bool MecanumDriveController::init(hardware_interface::VelocityJointInterface* hw,
-          ros::NodeHandle& root_nh,
-          ros::NodeHandle &controller_nh)
+bool MecanumDriveController::init(hardware_interface::VelocityJointInterface *hw,
+                                  rclcpp::Node &root_nh,
+                                  rclcpp::Node &controller_nh)
 {
   const std::string complete_ns = controller_nh.getNamespace();
   std::size_t id = complete_ns.find_last_of("/");
@@ -104,47 +108,54 @@ bool MecanumDriveController::init(hardware_interface::VelocityJointInterface* hw
 
   // Option use_realigned_roller_joints
   controller_nh.param("use_realigned_roller_joints", use_realigned_roller_joints_, use_realigned_roller_joints_);
-  ROS_INFO_STREAM_NAMED(name_, "Use the roller's radius rather than the wheel's: " << use_realigned_roller_joints_ << ".");
+  // TODO: This shouldn't work with the name_ thing in place
+
+  RCLCPP_INFO_STREAM(root_nh->logger(),
+                     "Use the roller's radius rather than the wheel's: "
+                         << use_realigned_roller_joints_ << ".");
 
   // Get joint names from the parameter server
   std::string wheel0_name;
   controller_nh.param("front_left_wheel_joint", wheel0_name, wheel0_name);
-  ROS_INFO_STREAM_NAMED(name_, "Front left wheel joint (wheel0) is : " << wheel0_name);
+  RCLCPP_INFO_STREAM(root_nh->logger(), "Front left wheel joint (wheel0) is : " << wheel0_name);
 
   std::string wheel1_name;
   controller_nh.param("back_left_wheel_joint", wheel1_name, wheel1_name);
-  ROS_INFO_STREAM_NAMED(name_, "Back left wheel joint (wheel1) is : " << wheel1_name);
+  RCLCPP_INFO_STREAM(root_nh->logger(), "Back left wheel joint (wheel1) is : " << wheel1_name);
 
   std::string wheel2_name;
   controller_nh.param("back_right_wheel_joint", wheel2_name, wheel2_name);
-  ROS_INFO_STREAM_NAMED(name_, "Back right wheel joint (wheel2) is : " << wheel2_name);
+  RCLCPP_INFO_STREAM(root_nh->logger(), "Back right wheel joint (wheel2) is : " << wheel2_name);
 
   std::string wheel3_name;
   controller_nh.param("front_right_wheel_joint", wheel3_name, wheel3_name);
-  ROS_INFO_STREAM_NAMED(name_, "Front right wheel joint (wheel3) is : " << wheel3_name);
+  RCLCPP_INFO_STREAM(root_nh->logger(), "Front right wheel joint (wheel3) is : " << wheel3_name);
 
   // Odometry related:
   double publish_rate;
   controller_nh.param("publish_rate", publish_rate, 50.0);
-  ROS_INFO_STREAM_NAMED(name_, "Controller state will be published at "
-                        << publish_rate << "Hz.");
-  publish_period_ = ros::Duration(1.0 / publish_rate);
+  RCLCPP_INFO_STREAM(root_nh->logger(),
+                     "Controller state will be published at " << publish_rate << "Hz.");
+  //  publish_period_ = ros::Duration(1.0 / publish_rate);
+  publish_period_ = rclcpp::duration::Duration(1.0 / publish_rate);
 
   controller_nh.param("open_loop", open_loop_, open_loop_);
 
   // Twist command related:
   controller_nh.param("cmd_vel_timeout", cmd_vel_timeout_, cmd_vel_timeout_);
-  ROS_INFO_STREAM_NAMED(name_, "Velocity commands will be considered old if they are older than "
-                        << cmd_vel_timeout_ << "s.");
+  RCLCPP_INFO_STREAM(root_nh->logger(),
+                     "Velocity commands will be considered old if they are older than "
+                         << cmd_vel_timeout_ << "s.");
 
   controller_nh.param("base_frame_id", base_frame_id_, base_frame_id_);
-  ROS_INFO_STREAM_NAMED(name_, "Base frame_id set to " << base_frame_id_);
+  RCLCPP_INFO_STREAM(root_nh->logger(), "Base frame_id set to " << base_frame_id_);
 
-    controller_nh.param("odom_frame_id", odom_frame_id_, odom_frame_id_);
-    ROS_INFO_STREAM_NAMED(name_, "Odom frame_id set to " << odom_frame_id_);
+  controller_nh.param("odom_frame_id", odom_frame_id_, odom_frame_id_);
+  RCLCPP_INFO_STREAM(root_nh->logger(), "Odom frame_id set to " << odom_frame_id_);
 
   controller_nh.param("enable_odom_tf", enable_odom_tf_, enable_odom_tf_);
-  ROS_INFO_STREAM_NAMED(name_, "Publishing to tf is " << (enable_odom_tf_?"enabled":"disabled"));
+  RCLCPP_INFO_STREAM(root_nh->logger(),
+                     "Publishing to tf is " << (enable_odom_tf_ ? "enabled" : "disabled"));
 
   // Velocity and acceleration limits:
   controller_nh.param("linear/x/has_velocity_limits"    , limiter_linX_.has_velocity_limits    , limiter_linX_.has_velocity_limits    );
@@ -187,7 +198,8 @@ bool MecanumDriveController::init(hardware_interface::VelocityJointInterface* hw
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void MecanumDriveController::update(const ros::Time& time, const ros::Duration& period)
+void MecanumDriveController::update(const rclcpp::time::Time &time,
+                                    const rclcpp::duration::Duration &period)
 {
   // COMPUTE AND PUBLISH ODOMETRY
   if (open_loop_)
@@ -213,8 +225,11 @@ void MecanumDriveController::update(const ros::Time& time, const ros::Duration& 
   {
     last_state_publish_time_ += publish_period_;
     // Compute and store orientation info
-    const geometry_msgs::Quaternion orientation(
-          tf::createQuaternionMsgFromYaw(odometry_.getHeading()));
+    //    const geometry_msgs::Quaternion orientation(
+    //          tf::createQuaternionMsgFromYaw(odometry_.getHeading()));
+    const geometry_msgs::msgs::Quaternion tf2::toMsg(tf2::toQuaternion(
+        odometry_
+            .getHeading())); // this is making a quaternion and then making a msg from that quaternion
 
     // Populate odom message and publish
     if(odom_pub_->trylock())
@@ -276,7 +291,7 @@ void MecanumDriveController::update(const ros::Time& time, const ros::Duration& 
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void MecanumDriveController::starting(const ros::Time& time)
+void MecanumDriveController::starting(const rclcpp::time::Time &time)
 {
   brake();
 
@@ -287,7 +302,7 @@ void MecanumDriveController::starting(const ros::Time& time)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void MecanumDriveController::stopping(const ros::Time& time)
+void MecanumDriveController::stopping(const rclcpp::time::Time &time)
 {
   brake();
 }
@@ -311,35 +326,32 @@ void MecanumDriveController::cmdVelCallback(const geometry_msgs::Twist& command)
     command_struct_.linY  = command.linear.y;
     command_struct_.stamp = ros::Time::now();
     command_.writeFromNonRT (command_struct_);
-    ROS_DEBUG_STREAM_NAMED(name_,
-                           "Added values to command. "
-                           << "Ang: "   << command_struct_.ang << ", "
-                           << "Lin: "   << command_struct_.linX << ", "
-                           << "Lin: "   << command_struct_.linY << ", "
-                           << "Stamp: " << command_struct_.stamp);
-  }
-  else
-  {
-    ROS_ERROR_NAMED(name_, "Can't accept new commands. Controller is not running.");
+    RCLCPP_DEBUG_STREAM(root_nh->logger(),
+                        "Added values to command. "
+                            << "Ang: " << command_struct_.ang << ", "
+                            << "Lin: " << command_struct_.linX << ", "
+                            << "Lin: " << command_struct_.linY << ", "
+                            << "Stamp: " << command_struct_.stamp);
+  } else {
+      ROS_ERROR_NAMED(root_nh->logger(), "Can't accept new commands. Controller is not running.");
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-bool MecanumDriveController::setWheelParamsFromUrdf(ros::NodeHandle& root_nh,
-                                                   ros::NodeHandle &controller_nh,
-                                                   const std::string& wheel0_name,
-                                                   const std::string& wheel1_name,
-                                                   const std::string& wheel2_name,
-                                                   const std::string& wheel3_name)
+bool MecanumDriveController::setWheelParamsFromUrdf(rclcpp::Node &root_nh,
+                                                    rclcpp::Node &controller_nh,
+                                                    const std::string &wheel0_name,
+                                                    const std::string &wheel1_name,
+                                                    const std::string &wheel2_name,
+                                                    const std::string &wheel3_name)
 {
   bool has_wheel_separation_x = controller_nh.getParam("wheel_separation_x", wheel_separation_x_);
   bool has_wheel_separation_y = controller_nh.getParam("wheel_separation_y", wheel_separation_y_);
 
   // Check to see if both X and Y separations are overrided.
-  if (has_wheel_separation_x != has_wheel_separation_y)
-  {
-    ROS_ERROR_STREAM_NAMED(name_, "Only one wheel separation overrided");
-    return false;
+  if (has_wheel_separation_x != has_wheel_separation_y) {
+      RCLCPP_ERROR_STREAM(root_nh->logger(), "Only one wheel separation overrided");
+      return false;
   }
 
   bool lookup_wheel_separation = !(has_wheel_separation_x && has_wheel_separation_y);
@@ -352,79 +364,89 @@ bool MecanumDriveController::setWheelParamsFromUrdf(ros::NodeHandle& root_nh,
     const std::string model_param_name = "robot_description";
     bool res = root_nh.hasParam(model_param_name);
     std::string robot_model_str="";
-    if(!res || !root_nh.getParam(model_param_name,robot_model_str))
-    {
-      ROS_ERROR_NAMED(name_, "Robot descripion couldn't be retrieved from param server.");
-      return false;
+    if (!res || !root_nh.getParam(model_param_name, robot_model_str)) {
+        ROS_ERROR_NAMED(root_nh->logger(),
+                        "Robot descripion couldn't be retrieved from param server.");
+        return false;
     }
 
     urdf::ModelInterfaceSharedPtr model(urdf::parseURDF(robot_model_str));
 
     // Get wheels position and compute parameter k_ (used in mecanum wheels IK).
     urdf::JointConstSharedPtr wheel0_urdfJoint(model->getJoint(wheel0_name));
-    if(!wheel0_urdfJoint)
-    {
-      ROS_ERROR_STREAM_NAMED(name_, wheel0_name
-                             << " couldn't be retrieved from model description");
-      return false;
+    if (!wheel0_urdfJoint) {
+        RCLCPP_ERROR_STREAM(root_nh->logger(),
+                            wheel0_name << " couldn't be retrieved from model description");
+        return false;
     }
     urdf::JointConstSharedPtr wheel1_urdfJoint(model->getJoint(wheel1_name));
-    if(!wheel1_urdfJoint)
-    {
-      ROS_ERROR_STREAM_NAMED(name_, wheel1_name
-                             << " couldn't be retrieved from model description");
-      return false;
+    if (!wheel1_urdfJoint) {
+        RCLCPP_ERROR_STREAM(root_nh->logger(),
+                            wheel1_name << " couldn't be retrieved from model description");
+        return false;
     }
     urdf::JointConstSharedPtr wheel2_urdfJoint(model->getJoint(wheel2_name));
-    if(!wheel2_urdfJoint)
-    {
-      ROS_ERROR_STREAM_NAMED(name_, wheel2_name
-                             << " couldn't be retrieved from model description");
-      return false;
+    if (!wheel2_urdfJoint) {
+        RCLCPP_ERROR_STREAM(root_nh->logger(),
+                            wheel2_name << " couldn't be retrieved from model description");
+        return false;
     }
     urdf::JointConstSharedPtr wheel3_urdfJoint(model->getJoint(wheel3_name));
-    if(!wheel3_urdfJoint)
-    {
-      ROS_ERROR_STREAM_NAMED(name_, wheel3_name
-                             << " couldn't be retrieved from model description");
-      return false;
+    if (!wheel3_urdfJoint) {
+        RCLCPP_ERROR_STREAM(root_nh->logger(),
+                            wheel3_name << " couldn't be retrieved from model description");
+        return false;
     }
 
-    if (lookup_wheel_separation)
-    {
-      ROS_INFO_STREAM("wheel0 to origin: "  << wheel0_urdfJoint->parent_to_joint_origin_transform.position.x << ","
-                                            << wheel0_urdfJoint->parent_to_joint_origin_transform.position.y << ", "
-                                            << wheel0_urdfJoint->parent_to_joint_origin_transform.position.z);
-      ROS_INFO_STREAM("wheel1 to origin: "  << wheel1_urdfJoint->parent_to_joint_origin_transform.position.x << ","
-                                            << wheel1_urdfJoint->parent_to_joint_origin_transform.position.y << ", "
-                                            << wheel1_urdfJoint->parent_to_joint_origin_transform.position.z);
-      ROS_INFO_STREAM("wheel2 to origin: "  << wheel2_urdfJoint->parent_to_joint_origin_transform.position.x << ","
-                                            << wheel2_urdfJoint->parent_to_joint_origin_transform.position.y << ", "
-                                            << wheel2_urdfJoint->parent_to_joint_origin_transform.position.z);
-      ROS_INFO_STREAM("wheel3 to origin: "  << wheel3_urdfJoint->parent_to_joint_origin_transform.position.x << ","
-                                            << wheel3_urdfJoint->parent_to_joint_origin_transform.position.y << ", "
-                                            << wheel3_urdfJoint->parent_to_joint_origin_transform.position.z);
+    if (lookup_wheel_separation) {
+        RCLCPP_INFO_STREAM(root_nh->logger(),
+                           "wheel0 to origin: "
+                               << wheel0_urdfJoint->parent_to_joint_origin_transform.position.x
+                               << ","
+                               << wheel0_urdfJoint->parent_to_joint_origin_transform.position.y
+                               << ", "
+                               << wheel0_urdfJoint->parent_to_joint_origin_transform.position.z);
+        RCLCPP_INFO_STREAM(root_nh->logger(),
+                           "wheel1 to origin: "
+                               << wheel1_urdfJoint->parent_to_joint_origin_transform.position.x
+                               << ","
+                               << wheel1_urdfJoint->parent_to_joint_origin_transform.position.y
+                               << ", "
+                               << wheel1_urdfJoint->parent_to_joint_origin_transform.position.z);
+        RCLCPP_INFO_STREAM(root_nh->logger(),
+                           "wheel2 to origin: "
+                               << wheel2_urdfJoint->parent_to_joint_origin_transform.position.x
+                               << ","
+                               << wheel2_urdfJoint->parent_to_joint_origin_transform.position.y
+                               << ", "
+                               << wheel2_urdfJoint->parent_to_joint_origin_transform.position.z);
+        RCLCPP_INFO_STREAM(root_nh->logger(),
+                           "wheel3 to origin: "
+                               << wheel3_urdfJoint->parent_to_joint_origin_transform.position.x
+                               << ","
+                               << wheel3_urdfJoint->parent_to_joint_origin_transform.position.y
+                               << ", "
+                               << wheel3_urdfJoint->parent_to_joint_origin_transform.position.z);
 
-      double wheel0_x = wheel0_urdfJoint->parent_to_joint_origin_transform.position.x;
-      double wheel0_y = wheel0_urdfJoint->parent_to_joint_origin_transform.position.y;
-      double wheel1_x = wheel1_urdfJoint->parent_to_joint_origin_transform.position.x;
-      double wheel1_y = wheel1_urdfJoint->parent_to_joint_origin_transform.position.y;
-      double wheel2_x = wheel2_urdfJoint->parent_to_joint_origin_transform.position.x;
-      double wheel2_y = wheel2_urdfJoint->parent_to_joint_origin_transform.position.y;
-      double wheel3_x = wheel3_urdfJoint->parent_to_joint_origin_transform.position.x;
-      double wheel3_y = wheel3_urdfJoint->parent_to_joint_origin_transform.position.y;
+        double wheel0_x = wheel0_urdfJoint->parent_to_joint_origin_transform.position.x;
+        double wheel0_y = wheel0_urdfJoint->parent_to_joint_origin_transform.position.y;
+        double wheel1_x = wheel1_urdfJoint->parent_to_joint_origin_transform.position.x;
+        double wheel1_y = wheel1_urdfJoint->parent_to_joint_origin_transform.position.y;
+        double wheel2_x = wheel2_urdfJoint->parent_to_joint_origin_transform.position.x;
+        double wheel2_y = wheel2_urdfJoint->parent_to_joint_origin_transform.position.y;
+        double wheel3_x = wheel3_urdfJoint->parent_to_joint_origin_transform.position.x;
+        double wheel3_y = wheel3_urdfJoint->parent_to_joint_origin_transform.position.y;
 
-      wheels_k_ = (-(-wheel0_x - wheel0_y) - (wheel1_x - wheel1_y) + (-wheel2_x - wheel2_y) + (wheel3_x - wheel3_y))
-                  / 4.0;
-    }
-    else
-    {
-      ROS_INFO_STREAM("Wheel seperation in X: " << wheel_separation_x_);
-      ROS_INFO_STREAM("Wheel seperation in Y: " << wheel_separation_y_);
+        wheels_k_ = (-(-wheel0_x - wheel0_y) - (wheel1_x - wheel1_y) + (-wheel2_x - wheel2_y)
+                     + (wheel3_x - wheel3_y))
+                    / 4.0;
+    } else {
+        RCLCPP_INFO_STREAM(root_nh->logger(), "Wheel seperation in X: " << wheel_separation_x_);
+        RCLCPP_INFO_STREAM(root_nh->logger(), "Wheel seperation in Y: " << wheel_separation_y_);
 
-      // The seperation is the total distance between the wheels in X and Y.
+        // The seperation is the total distance between the wheels in X and Y.
 
-      wheels_k_ = (wheel_separation_x_ + wheel_separation_y_) / 2.0;
+        wheels_k_ = (wheel_separation_x_ + wheel_separation_y_) / 2.0;
     }
 
     if (lookup_wheel_radius)
@@ -435,28 +457,27 @@ bool MecanumDriveController::setWheelParamsFromUrdf(ros::NodeHandle& root_nh,
       double wheel2_radius = 0.0;
       double wheel3_radius = 0.0;
 
-      if (!getWheelRadius(model, model->getLink(wheel0_urdfJoint->child_link_name), wheel0_radius) ||
-          !getWheelRadius(model, model->getLink(wheel1_urdfJoint->child_link_name), wheel1_radius) ||
-          !getWheelRadius(model, model->getLink(wheel2_urdfJoint->child_link_name), wheel2_radius) ||
-          !getWheelRadius(model, model->getLink(wheel3_urdfJoint->child_link_name), wheel3_radius))
-      {
-        ROS_ERROR_STREAM_NAMED(name_, "Couldn't retrieve wheels' radius");
-        return false;
+      if (!getWheelRadius(model, model->getLink(wheel0_urdfJoint->child_link_name), wheel0_radius)
+          || !getWheelRadius(model, model->getLink(wheel1_urdfJoint->child_link_name), wheel1_radius)
+          || !getWheelRadius(model, model->getLink(wheel2_urdfJoint->child_link_name), wheel2_radius)
+          || !getWheelRadius(model,
+                             model->getLink(wheel3_urdfJoint->child_link_name),
+                             wheel3_radius)) {
+          RCLCPP_ERROR_STREAM(root_nh->logger(), "Couldn't retrieve wheels' radius");
+          return false;
       }
 
-      if (abs(wheel0_radius - wheel1_radius) > 1e-3 ||
-          abs(wheel0_radius - wheel2_radius) > 1e-3 ||
-          abs(wheel0_radius - wheel3_radius) > 1e-3)
-      {
-        ROS_ERROR_STREAM_NAMED(name_, "Wheels radius are not egual");
-        return false;
+      if (abs(wheel0_radius - wheel1_radius) > 1e-3 || abs(wheel0_radius - wheel2_radius) > 1e-3
+          || abs(wheel0_radius - wheel3_radius) > 1e-3) {
+          RCLCPP_ERROR_STREAM(root_nh->logger(), "Wheels radius are not egual");
+          return false;
       }
 
       wheels_radius_ = wheel0_radius;
     }
   }
 
-  ROS_INFO_STREAM("Wheel radius: " << wheels_radius_);
+  RCLCPP_INFO_STREAM(root_nh->logger(), "Wheel radius: " << wheels_radius_);
 
   // Set wheel params for the odometry computation
   odometry_.setWheelsParams(wheels_k_, wheels_radius_);
@@ -474,26 +495,30 @@ bool MecanumDriveController::getWheelRadius(const urdf::ModelInterfaceSharedPtr 
   {
       // This mode is used when the mecanum wheels are simulated and we use realigned rollers to mimic mecanum wheels.
       const urdf::JointConstSharedPtr& roller_joint = radius_link->child_joints[0];
-      if(!roller_joint)
-      {
-        ROS_ERROR_STREAM_NAMED(name_, "No roller joint could be retrieved for wheel : " << wheel_link->name <<
-          ". Are you sure mecanum wheels are simulated using realigned rollers?");
-        return false;
+      if (!roller_joint) {
+          RCLCPP_ERROR_STREAM(
+              root_nh->logger(),
+              "No roller joint could be retrieved for wheel : "
+                  << wheel_link->name
+                  << ". Are you sure mecanum wheels are simulated using realigned rollers?");
+          return false;
       }
 
       radius_link = model->getLink(roller_joint->child_link_name);
-      if(!radius_link)
-      {
-        ROS_ERROR_STREAM_NAMED(name_, "No roller link could be retrieved for wheel : " << wheel_link->name <<
-          ". Are you sure mecanum wheels are simulated using realigned rollers?");
-        return false;
+      if (!radius_link) {
+          RCLCPP_ERROR_STREAM(
+              root_nh->logger(),
+              "No roller link could be retrieved for wheel : "
+                  << wheel_link->name
+                  << ". Are you sure mecanum wheels are simulated using realigned rollers?");
+          return false;
       }
   }
 
-  if(!isCylinderOrSphere(radius_link))
-  {
-    ROS_ERROR_STREAM("Wheel link " << radius_link->name << " is NOT modeled as a cylinder!");
-    return false;
+  if (!isCylinderOrSphere(radius_link)) {
+      ROS_ERROR_STREAM(root_nh->logger(),
+                       "Wheel link " << radius_link->name << " is NOT modeled as a cylinder!");
+      return false;
   }
 
   if (radius_link->collision->geometry->type == urdf::Geometry::CYLINDER)
@@ -505,22 +530,22 @@ bool MecanumDriveController::getWheelRadius(const urdf::ModelInterfaceSharedPtr 
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void MecanumDriveController::setupRtPublishersMsg(ros::NodeHandle& root_nh, ros::NodeHandle& controller_nh)
+void MecanumDriveController::setupRtPublishersMsg(rclcpp::Node &root_nh, rclcpp::Node &controller_nh)
 {
   // Get covariance parameters for odometry.
   XmlRpc::XmlRpcValue pose_cov_list;
   controller_nh.getParam("pose_covariance_diagonal", pose_cov_list);
-  ROS_ASSERT(pose_cov_list.getType() == XmlRpc::XmlRpcValue::TypeArray);
-  ROS_ASSERT(pose_cov_list.size() == 6);
+  rcpputils::assert_true(pose_cov_list.getType() == XmlRpc::XmlRpcValue::TypeArray);
+  rcpputils::assert_true(pose_cov_list.size() == 6);
   for (int i = 0; i < pose_cov_list.size(); ++i)
-    ROS_ASSERT(pose_cov_list[i].getType() == XmlRpc::XmlRpcValue::TypeDouble);
+      rcpputils::assert_true(pose_cov_list[i].getType() == XmlRpc::XmlRpcValue::TypeDouble);
 
   XmlRpc::XmlRpcValue twist_cov_list;
   controller_nh.getParam("twist_covariance_diagonal", twist_cov_list);
-  ROS_ASSERT(twist_cov_list.getType() == XmlRpc::XmlRpcValue::TypeArray);
-  ROS_ASSERT(twist_cov_list.size() == 6);
+  rcpputils::assert_true(twist_cov_list.getType() == XmlRpc::XmlRpcValue::TypeArray);
+  rcpputils::assert_true(twist_cov_list.size() == 6);
   for (int i = 0; i < twist_cov_list.size(); ++i)
-    ROS_ASSERT(twist_cov_list[i].getType() == XmlRpc::XmlRpcValue::TypeDouble);
+      rcpputils::assert_true(twist_cov_list[i].getType() == XmlRpc::XmlRpcValue::TypeDouble);
 
   // Setup odometry msg.
   odom_pub_.reset(new realtime_tools::RealtimePublisher<nav_msgs::Odometry>(controller_nh, "odom", 100));
@@ -547,7 +572,7 @@ void MecanumDriveController::setupRtPublishersMsg(ros::NodeHandle& root_nh, ros:
       (0)  (0)  (0)  (0)  (0)  (static_cast<double>(twist_cov_list[5]));
 
   // Setup tf msg.
-  tf_odom_pub_.reset(new realtime_tools::RealtimePublisher<tf::tfMessage>(root_nh, "/tf", 100));
+  tf_odom_pub_.reset(new realtime_tools::RealtimePublisher<tf2_msg::TFMessage>(root_nh, "/tf", 100));
   tf_odom_pub_->msg_.transforms.resize(1);
   tf_odom_pub_->msg_.transforms[0].transform.translation.z = 0.0;
   tf_odom_pub_->msg_.transforms[0].child_frame_id = base_frame_id_;

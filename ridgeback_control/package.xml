@@ -10,13 +10,14 @@
   <url type="website">http://wiki.ros.org/ridgeback_control</url>
   <author email="mpurvis@clearpathrobotics.com">Mike Purvis</author>
 
-  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>controller_interface</depend>
   <depend>controller_manager</depend>
   <depend>realtime_tools</depend>
   <depend>nav_msgs</depend>
-  <depend>tf</depend>
+  <depend>std_msgs</depend>
+  <depend>tf2</depend>
   <depend>urdf</depend>
 
   <exec_depend>interactive_marker_twist_server</exec_depend>
@@ -27,9 +28,8 @@
   <exec_depend>topic_tools</exec_depend>
   <exec_depend>twist_mux</exec_depend>
 
-  <test_depend>roslaunch</test_depend>
-
   <export>
     <controller_interface plugin="${prefix}/mecanum_drive_controller_plugins.xml"/>
+    <build_type>ament_cmake</build_type>
   </export>
 </package>

@@ -10,13 +10,13 @@
 
   <author email="mpurvis@clearpathrobotics.com">Mike Purvis</author>
 
-  <buildtool_depend>catkin</buildtool_depend>
-  <build_depend>roslaunch</build_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
   <run_depend>robot_state_publisher</run_depend>
   <run_depend>lms1xx</run_depend>
   <run_depend>urdf</run_depend>
   <run_depend>xacro</run_depend>
 
   <export>
+      <build_type>ament_cmake</build_type>
   </export>
 </package>

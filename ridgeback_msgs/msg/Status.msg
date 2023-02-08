@@ -1,14 +1,14 @@
 # This message represents Ridgeback's lower-frequency status updates from the MCU
 # Default publish frequency is 1Hz.
 
-Header header
+std_msgs/Header header
 
 # Commit of firmware source.
 string hardware_id
 
 # Times since MCU power-on and MCU rosserial connection, respectively.
-duration mcu_uptime
-duration connection_uptime
+builtin_interfaces/Duration mcu_uptime
+builtin_interfaces/Duration connection_uptime
 
 # Temperature of MCU's PCB in Celsius.
 float32 pcb_temperature

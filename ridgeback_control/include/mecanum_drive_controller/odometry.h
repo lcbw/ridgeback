@@ -42,11 +42,12 @@
 #ifndef ODOMETRY_H_
 #define ODOMETRY_H_
 
-#include <ros/time.h>
+//#include <ros/time.h>
 #include <boost/accumulators/accumulators.hpp>
-#include <boost/accumulators/statistics/stats.hpp>
 #include <boost/accumulators/statistics/rolling_mean.hpp>
+#include <boost/accumulators/statistics/stats.hpp>
 #include <boost/function.hpp>
+#include <rclcpp/time.h>
 
 namespace mecanum_drive_controller
 {
@@ -76,7 +77,7 @@ public:
    * \brief Initialize the odometry
    * \param time Current time
    */
-  void init(const ros::Time &time);
+  void init(const rclcpp::time::Time &time);
 
   /**
    * \brief Updates the odometry class with latest wheels position
@@ -87,7 +88,11 @@ public:
    * \param time      Current time
    * \return true if the odometry is actually updated
    */
-  bool update(double wheel0_vel, double wheel1_vel, double wheel2_vel, double wheel3_vel, const ros::Time &time);
+  bool update(double wheel0_vel,
+              double wheel1_vel,
+              double wheel2_vel,
+              double wheel3_vel,
+              const rclcpp::time::Time &time);
 
   /**
    * \brief Updates the odometry class with latest velocity command
@@ -95,7 +100,10 @@ public:
    * \param angular Angular velocity [rad/s]
    * \param time    Current time
    */
-  void updateOpenLoop(double linearX, double linearY, double angular, const ros::Time &time);
+  void updateOpenLoop(double linearX,
+                      double linearY,
+                      double angular,
+                      const rclcpp::time::Time &time);
 
   /**
    * \brief heading getter
@@ -173,7 +181,10 @@ private:
   void integrateExact(double linearX, double linearY, double angular);
 
   /// Current timestamp:
-  ros::Time timestamp_;
+  //  msg.header.stamp timestamp_;
+
+  //current time as a ROS object
+  rclcpp::time::Time timestamp_;
 
   /// Current pose:
   double x_;        //   [m]

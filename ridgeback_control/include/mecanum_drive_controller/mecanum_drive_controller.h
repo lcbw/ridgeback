@@ -48,6 +48,8 @@
 
 #include <mecanum_drive_controller/odometry.h>
 #include <mecanum_drive_controller/speed_limiter.h>
+#include <rclcpp/rclcpp.h>
+#include <rclcpp/rcpputils.h>
 
 namespace mecanum_drive_controller
 {
@@ -73,35 +75,35 @@ public:
    * \param root_nh       Node handle at root namespace
    * \param controller_nh Node handle inside the controller namespace
    */
-  bool init(hardware_interface::VelocityJointInterface* hw,
-            ros::NodeHandle& root_nh,
-            ros::NodeHandle &controller_nh);
+  bool init(hardware_interface::VelocityJointInterface *hw,
+            rclcpp::Node root_nh,
+            rclcpp::Node &controller_nh);
 
   /**
    * \brief Updates controller, i.e. computes the odometry and sets the new velocity commands
    * \param time   Current time
    * \param period Time since the last called to update
    */
-  void update(const ros::Time& time, const ros::Duration& period);
+  void update(const rclcpp::time::Time &time, const rclcpp::duration::Duration &period);
 
   /**
    * \brief Starts controller
    * \param time Current time
    */
-  void starting(const ros::Time& time);
+  void starting(const rclcpp::time::Time &time);
 
   /**
    * \brief Stops controller
    * \param time Current time
    */
-  void stopping(const ros::Time& time);
+  void stopping(const rclcpp::time::Time &time);
 
-private:
+  private:
   std::string name_;
 
   /// Odometry related:
-  ros::Duration publish_period_;
-  ros::Time last_state_publish_time_;
+  rclcpp::duration::Duration publish_period_;
+  rclcpp::time::Time last_state_publish_time_;
   bool open_loop_;
 
   /// Hardware handles:
@@ -116,13 +118,13 @@ private:
     double linX;
     double linY;
     double ang;
-    ros::Time stamp;
+    rclcpp::time::Time stamp;
 
     Commands() : linX(0.0), linY(0.0), ang(0.0), stamp(0.0) {}
   };
   realtime_tools::RealtimeBuffer<Commands> command_;
   Commands command_struct_;
-  ros::Subscriber sub_command_;
+  rclcpp::Subscriber sub_command_;
 
   /// Odometry related:
   boost::shared_ptr<realtime_tools::RealtimePublisher<nav_msgs::Odometry> > odom_pub_;
@@ -176,12 +178,12 @@ private:
    * \param wheel2_name Name of wheel2 joint
    * \param wheel3_name Name of wheel3 joint
    */
-  bool setWheelParamsFromUrdf(ros::NodeHandle& root_nh,
-                             ros::NodeHandle &controller_nh,
-                             const std::string& wheel0_name,
-                             const std::string& wheel1_name,
-                             const std::string& wheel2_name,
-                             const std::string& wheel3_name);
+  bool setWheelParamsFromUrdf(rclcpp::Node &root_nh,
+                              rclcpp::Node &controller_nh,
+                              const std::string &wheel0_name,
+                              const std::string &wheel1_name,
+                              const std::string &wheel2_name,
+                              const std::string &wheel3_name);
 
   /**
    * \brief Get the radius of a given wheel
@@ -196,8 +198,7 @@ private:
    * \param root_nh Root node handle
    * \param controller_nh Node handle inside the controller namespace
    */
-  void setupRtPublishersMsg(ros::NodeHandle& root_nh, ros::NodeHandle& controller_nh);
-
+  void setupRtPublishersMsg(rclcpp::Node &root_nh, rclcpp::Node &controller_nh);
 };
 
 PLUGINLIB_EXPORT_CLASS(mecanum_drive_controller::MecanumDriveController, controller_interface::ControllerBase)
