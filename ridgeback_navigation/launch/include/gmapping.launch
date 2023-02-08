@@ -2,7 +2,7 @@
 
   <arg name="scan_topic" default="front/scan" />
 
-  <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" output="screen">
+  <node pkg="gmapping" exec="slam_gmapping" name="slam_gmapping" output="screen">
 
     <param name="odom_frame" value="odom"/>
     <param name="base_frame" value="base_link"/>
@@ -61,6 +61,6 @@
     <param name="lasamplerange" value="0.005"/>
     <param name="lasamplestep" value="0.005"/>
 
-    <remap from="scan" to="$(arg scan_topic)"/>
+    <remap from="scan" to="$(var scan_topic)"/>
   </node>
 </launch>

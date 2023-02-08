@@ -1,19 +1,35 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.5.0)
 project(ridgeback_description)
 
-find_package(catkin REQUIRED COMPONENTS roslaunch)
+# Default to C99
+if(NOT CMAKE_C_STANDARD)
+  set(CMAKE_C_STANDARD 99)
+endif()
 
-catkin_package()
+# Default to C++14
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+find_package(ament_cmake REQUIRED)
+#find_package(catkin REQUIRED COMPONENTS roslaunch)
+
+#catkin_package()
 
 install(DIRECTORY meshes launch urdf
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+  DESTINATION share/${PROJECT_NAME}/
 )
 
 install(PROGRAMS scripts/env_run
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+  DESTINATION bin/${PROJECT_NAME}/
 )
 
-if(CATKIN_ENABLE_TESTING)
-  find_package(roslaunch REQUIRED)
-  roslaunch_add_file_check(launch/description.launch)
-endif()
+#if(CATKIN_ENABLE_TESTING)
+#  find_package(roslaunch REQUIRED)
+#  roslaunch_add_file_check(launch/description.launch)
+#endif()
+ament_package()
