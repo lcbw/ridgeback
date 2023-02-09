@@ -42,7 +42,6 @@
 #ifndef ODOMETRY_H_
 #define ODOMETRY_H_
 
-//#include <ros/time.h>
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/rolling_mean.hpp>
 #include <boost/accumulators/statistics/stats.hpp>

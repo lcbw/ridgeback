@@ -76,8 +76,8 @@ public:
    * \param controller_nh Node handle inside the controller namespace
    */
   bool init(hardware_interface::VelocityJointInterface *hw,
-            rclcpp::Node root_nh,
-            rclcpp::Node &controller_nh);
+            std::shared_ptr<rclcpp::Node> root_nh,
+            std::shared_ptr<rclcpp::Node> &controller_nh);
 
   /**
    * \brief Updates controller, i.e. computes the odometry and sets the new velocity commands
@@ -178,8 +178,8 @@ private:
    * \param wheel2_name Name of wheel2 joint
    * \param wheel3_name Name of wheel3 joint
    */
-  bool setWheelParamsFromUrdf(rclcpp::Node &root_nh,
-                              rclcpp::Node &controller_nh,
+  bool setWheelParamsFromUrdf(std::shared_ptr<rclcpp::Node> &root_nh,
+                              std::shared_ptr<rclcpp::Node> &controller_nh,
                               const std::string &wheel0_name,
                               const std::string &wheel1_name,
                               const std::string &wheel2_name,
@@ -198,7 +198,8 @@ private:
    * \param root_nh Root node handle
    * \param controller_nh Node handle inside the controller namespace
    */
-  void setupRtPublishersMsg(rclcpp::Node &root_nh, rclcpp::Node &controller_nh);
+  void setupRtPublishersMsg(std::shared_ptr<rclcpp::Node> &root_nh,
+                            std::shared_ptr<rclcpp::Node> &controller_nh);
 };
 
 PLUGINLIB_EXPORT_CLASS(mecanum_drive_controller::MecanumDriveController, controller_interface::ControllerBase)

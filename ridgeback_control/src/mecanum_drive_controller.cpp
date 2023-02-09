@@ -99,8 +99,8 @@ MecanumDriveController::MecanumDriveController()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool MecanumDriveController::init(hardware_interface::VelocityJointInterface *hw,
-                                  rclcpp::Node &root_nh,
-                                  rclcpp::Node &controller_nh)
+                                  std::shared_ptr<rclcpp::Node> &root_nh,
+                                  std::shared_ptr<rclcpp::Node> &controller_nh)
 {
   const std::string complete_ns = controller_nh.getNamespace();
   std::size_t id = complete_ns.find_last_of("/");
@@ -338,8 +338,8 @@ void MecanumDriveController::cmdVelCallback(const geometry_msgs::Twist& command)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-bool MecanumDriveController::setWheelParamsFromUrdf(rclcpp::Node &root_nh,
-                                                    rclcpp::Node &controller_nh,
+bool MecanumDriveController::setWheelParamsFromUrdf(std::shared_ptr<rclcpp::Node> &root_nh,
+                                                    std::shared_ptr<rclcpp::Node> &controller_nh,
                                                     const std::string &wheel0_name,
                                                     const std::string &wheel1_name,
                                                     const std::string &wheel2_name,
@@ -530,7 +530,8 @@ bool MecanumDriveController::getWheelRadius(const urdf::ModelInterfaceSharedPtr 
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void MecanumDriveController::setupRtPublishersMsg(rclcpp::Node &root_nh, rclcpp::Node &controller_nh)
+void MecanumDriveController::setupRtPublishersMsg(std::shared_ptr<rclcpp::Node> &root_nh,
+                                                  std::shared_ptr<rclcpp::Node> &controller_nh)
 {
   // Get covariance parameters for odometry.
   XmlRpc::XmlRpcValue pose_cov_list;
