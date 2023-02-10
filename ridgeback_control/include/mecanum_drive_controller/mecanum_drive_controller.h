@@ -36,20 +36,24 @@
  * Author: Enrique Fernández
  */
 
-#include <controller_interface/controller.h>
-#include <hardware_interface/joint_command_interface.h>
-#include <pluginlib/class_list_macros.h>
+#ifndef FORWARD_COMMAND_CONTROLLER__FORWARD_COMMAND_CONTROLLER_HPP_
+#define FORWARD_COMMAND_CONTROLLER__FORWARD_COMMAND_CONTROLLER_HPP_
 
-#include <nav_msgs/Odometry.h>
-#include <tf/tfMessage.h>
+#include <hardware_interface/hardware_info.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <pluginlib/class_list_macros.h>
+#include <tf2_msgs/msg/tfmessage.hpp>
 
 #include <realtime_tools/realtime_buffer.h>
 #include <realtime_tools/realtime_publisher.h>
 
+//#include "mecanum_drive_controller_parameters.h"
+#include <mecanum_drive_controller/mecanum_drive_controller_base.h>
 #include <mecanum_drive_controller/odometry.h>
 #include <mecanum_drive_controller/speed_limiter.h>
-#include <rclcpp/rclcpp.h>
-#include <rclcpp/rcpputils.h>
+#include <mecanum_drive_controller/visibility_control.h>
+#include <rclcpp/rclcpp.hpp>
+#include <rcpputils/asserts.hpp>
 
 namespace mecanum_drive_controller
 {
@@ -63,72 +67,77 @@ namespace mecanum_drive_controller
  *  - a wheel collision geometry is a cylinder in the urdf
  *  - a wheel joint frame center's vertical projection on the floor must lie within the contact patch
  */
-class MecanumDriveController
-    : public controller_interface::Controller<hardware_interface::VelocityJointInterface>
+class MecanumDriveController : public MecanumDriveControllerBase
 {
 public:
-  MecanumDriveController();
+    MECANUM_DRIVE_CONTROLLER_PUBLIC
+    MecanumDriveController();
 
-  /**
+    /**
    * \brief Initialize controller
    * \param hw            Velocity joint interface for the wheels
    * \param root_nh       Node handle at root namespace
    * \param controller_nh Node handle inside the controller namespace
    */
-  bool init(hardware_interface::VelocityJointInterface *hw,
-            std::shared_ptr<rclcpp::Node> root_nh,
-            std::shared_ptr<rclcpp::Node> &controller_nh);
+    bool init(hardware_interface::RobotHardware *hw,
+              std::shared_ptr<rclcpp::Node> root_nh,
+              std::shared_ptr<rclcpp::Node> &controller_nh);
 
-  /**
+    /**
    * \brief Updates controller, i.e. computes the odometry and sets the new velocity commands
    * \param time   Current time
    * \param period Time since the last called to update
    */
-  void update(const rclcpp::time::Time &time, const rclcpp::duration::Duration &period);
+    void update(const rclcpp::Time &time, const rclcpp::Duration &period);
 
-  /**
+    /**
    * \brief Starts controller
    * \param time Current time
    */
-  void starting(const rclcpp::time::Time &time);
+    void starting(const rclcpp::Time &time);
 
-  /**
+    /**
    * \brief Stops controller
    * \param time Current time
    */
-  void stopping(const rclcpp::time::Time &time);
+    void stopping(const rclcpp::Time &time);
 
-  private:
-  std::string name_;
+private:
+    std::string name_;
 
-  /// Odometry related:
-  rclcpp::duration::Duration publish_period_;
-  rclcpp::time::Time last_state_publish_time_;
-  bool open_loop_;
+    /// Odometry related:
+    rclcpp::Duration publish_period_;
+    rclcpp::Time last_state_publish_time_;
+    bool open_loop_;
 
-  /// Hardware handles:
-  hardware_interface::JointHandle wheel0_jointHandle_;
-  hardware_interface::JointHandle wheel1_jointHandle_;
-  hardware_interface::JointHandle wheel2_jointHandle_;
-  hardware_interface::JointHandle wheel3_jointHandle_;
+    /// Hardware handles:
+    hardware_interface::JointHandle wheel0_jointHandle_;
+    hardware_interface::JointHandle wheel1_jointHandle_;
+    hardware_interface::JointHandle wheel2_jointHandle_;
+    hardware_interface::JointHandle wheel3_jointHandle_;
 
-  /// Velocity command related:
-  struct Commands
-  {
-    double linX;
-    double linY;
-    double ang;
-    rclcpp::time::Time stamp;
+    /// Velocity command related:
+    struct Commands
+    {
+        double linX;
+        double linY;
+        double ang;
+        rclcpp::Time stamp;
 
-    Commands() : linX(0.0), linY(0.0), ang(0.0), stamp(0.0) {}
-  };
+        Commands()
+            : linX(0.0)
+            , linY(0.0)
+            , ang(0.0)
+            , stamp(0.0)
+        {}
+    };
   realtime_tools::RealtimeBuffer<Commands> command_;
   Commands command_struct_;
   rclcpp::Subscriber sub_command_;
 
   /// Odometry related:
-  boost::shared_ptr<realtime_tools::RealtimePublisher<nav_msgs::Odometry> > odom_pub_;
-  boost::shared_ptr<realtime_tools::RealtimePublisher<tf::tfMessage> > tf_odom_pub_;
+  boost::shared_ptr<realtime_tools::RealtimePublisher<nav_msgs::Odometry>> odom_pub_;
+  //  boost::shared_ptr<realtime_tools::RealtimePublisher<tf2_msgs::TFMessage>> tf_odom_pub_;
   Odometry odometry_;
   geometry_msgs::TransformStamped odom_frame_;
 
@@ -200,8 +209,14 @@ private:
    */
   void setupRtPublishersMsg(std::shared_ptr<rclcpp::Node> &root_nh,
                             std::shared_ptr<rclcpp::Node> &controller_nh);
+
+  protected:
+  void declare_parameters() override;
+  controller_interface::CallbackReturn read_parameters() override;
+
+  std::shared_ptr<ParamListener> param_listener_;
+  Params params_;
 };
-
-PLUGINLIB_EXPORT_CLASS(mecanum_drive_controller::MecanumDriveController, controller_interface::ControllerBase)
-
+//PLUGINLIB_EXPORT_CLASS(mecanum_drive_controller::MecanumDriveController, controller_interface::ControllerBase)
 } // namespace mecanum_drive_controller
+#endif

@@ -39,6 +39,14 @@
 //#include <tf/transform_datatypes.h>
 // we'll need to include tf2_msgs and tf2 seperately
 
+#include <algorithm>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <rclcpp/logging.hpp>
+#include <rclcpp/qos.hpp>
 #include <urdf_parser/urdf_parser.h>
 
 #include <boost/assign.hpp>
@@ -47,58 +55,91 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// TODO: unsure how to port the following BECAUSE we need a nodehandle to log stuff now
+// this is just a helper function, so I don't see why this wouldn't work
 
-//static bool isCylinderOrSphere(const urdf::LinkConstSharedPtr& link)
-//{
-//  if(!link)
-//  {
-//    RCLCPP_ERROR("Link == NULL.");
-//    return false;
-//  }
+static bool isCylinderOrSphere(const urdf::LinkConstSharedPtr &link)
+{
+    if (!link) {
+        RCLCPP_ERROR("Link == NULL.");
+        return false;
+    }
 
-//  if(!link->collision)
-//  {
-//    ROS_ERROR_STREAM("Link " << link->name << " does not have collision description. Add collision description for link to urdf.");
-//    return false;
-//  }
+    if (!link->collision) {
+        ROS_ERROR_STREAM(
+            "Link "
+            << link->name
+            << " does not have collision description. Add collision description for link to urdf.");
+        return false;
+    }
 
-//  if(!link->collision->geometry)
-//  {
-//    ROS_ERROR_STREAM("Link " << link->name << " does not have collision geometry description. Add collision geometry description for link to urdf.");
-//    return false;
-//  }
+    if (!link->collision->geometry) {
+        ROS_ERROR_STREAM("Link " << link->name
+                                 << " does not have collision geometry description. Add collision "
+                                    "geometry description for link to urdf.");
+        return false;
+    }
 
-//  if(link->collision->geometry->type != urdf::Geometry::CYLINDER && link->collision->geometry->type != urdf::Geometry::SPHERE)
-//  {
-//    ROS_ERROR_STREAM("Link " << link->name << " does not have cylinder nor sphere geometry");
-//    return false;
-//  }
+    if (link->collision->geometry->type != urdf::Geometry::CYLINDER
+        && link->collision->geometry->type != urdf::Geometry::SPHERE) {
+        ROS_ERROR_STREAM("Link " << link->name << " does not have cylinder nor sphere geometry");
+        return false;
+    }
 
-//  return true;
-//}
+    return true;
+}
 
 namespace mecanum_drive_controller
 {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 MecanumDriveController::MecanumDriveController()
-  : open_loop_(false)
-  , command_struct_()
-  , use_realigned_roller_joints_(false)
-  , wheels_k_(0.0)
-  , wheels_radius_(0.0)
-  , cmd_vel_timeout_(0.5)
-  , base_frame_id_("base_link")
-  , odom_frame_id_("odom")
-  , enable_odom_tf_(true)
-  , wheel_joints_size_(0)
+    : MecanumDriveControllerBase()
+    , open_loop_(false)
+    , command_struct_()
+    , use_realigned_roller_joints_(false)
+    , wheels_k_(0.0)
+    , wheels_radius_(0.0)
+    , cmd_vel_timeout_(0.5)
+    , base_frame_id_("base_link")
+    , odom_frame_id_("odom")
+    , enable_odom_tf_(true)
+    , wheel_joints_size_(0)
 {
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-bool MecanumDriveController::init(hardware_interface::VelocityJointInterface *hw,
+void MecanumDriveController::declare_parameters()
+{
+    param_listener_ = std::make_shared<ParamListener>(get_node());
+}
+
+controller_interface::CallbackReturn MecanumDriveController::read_parameters()
+{
+    if (!param_listener_) {
+        RCLCPP_ERROR(get_node()->get_logger(), "Error encountered during init");
+        return controller_interface::CallbackReturn::ERROR;
+    }
+    params_ = param_listener_->get_params();
+
+    if (params_.joints.empty()) {
+        RCLCPP_ERROR(get_node()->get_logger(), "'joints' parameter was empty");
+        return controller_interface::CallbackReturn::ERROR;
+    }
+
+    if (params_.interface_name.empty()) {
+        RCLCPP_ERROR(get_node()->get_logger(), "'interface_name' parameter was empty");
+        return controller_interface::CallbackReturn::ERROR;
+    }
+
+    for (const auto &joint : params_.joints) {
+        command_interface_types_.push_back(joint + "/" + params_.interface_name);
+    }
+
+    return controller_interface::CallbackReturn::SUCCESS;
+}
+
+bool MecanumDriveController::init(hardware_interface::RobotHardware *hw,
                                   std::shared_ptr<rclcpp::Node> &root_nh,
                                   std::shared_ptr<rclcpp::Node> &controller_nh)
 {
@@ -220,40 +261,40 @@ void MecanumDriveController::update(const rclcpp::time::Time &time,
     odometry_.update(wheel0_vel, wheel1_vel, wheel2_vel, wheel3_vel, time);
   }
 
-  // Publish odometry message
-  if(last_state_publish_time_ + publish_period_ < time)
-  {
-    last_state_publish_time_ += publish_period_;
-    // Compute and store orientation info
-    //    const geometry_msgs::Quaternion orientation(
-    //          tf::createQuaternionMsgFromYaw(odometry_.getHeading()));
-    const geometry_msgs::msgs::Quaternion tf2::toMsg(tf2::toQuaternion(
-        odometry_
-            .getHeading())); // this is making a quaternion and then making a msg from that quaternion
+  //  // Publish odometry message
+  //  if(last_state_publish_time_ + publish_period_ < time)
+  //  {
+  //    last_state_publish_time_ += publish_period_;
+  //    // Compute and store orientation info
+  //    //    const geometry_msgs::Quaternion orientation(
+  //    //          tf::createQuaternionMsgFromYaw(odometry_.getHeading()));
+  //    const geometry_msgs::msgs::Quaternion tf2::toMsg(tf2::toQuaternion(
+  //        odometry_
+  //            .getHeading())); // this is making a quaternion and then making a msg from that quaternion
 
-    // Populate odom message and publish
-    if(odom_pub_->trylock())
-    {
-      odom_pub_->msg_.header.stamp = time;
-      odom_pub_->msg_.pose.pose.position.x = odometry_.getX();
-      odom_pub_->msg_.pose.pose.position.y = odometry_.getY();
-      odom_pub_->msg_.pose.pose.orientation = orientation;
-      odom_pub_->msg_.twist.twist.linear.x  = odometry_.getLinearX();
-      odom_pub_->msg_.twist.twist.linear.y  = odometry_.getLinearY();
-      odom_pub_->msg_.twist.twist.angular.z = odometry_.getAngular();
-      odom_pub_->unlockAndPublish();
-    }
+  //    // Populate odom message and publish
+  //    if(odom_pub_->trylock())
+  //    {
+  //      odom_pub_->msg_.header.stamp = time;
+  //      odom_pub_->msg_.pose.pose.position.x = odometry_.getX();
+  //      odom_pub_->msg_.pose.pose.position.y = odometry_.getY();
+  //      odom_pub_->msg_.pose.pose.orientation = orientation;
+  //      odom_pub_->msg_.twist.twist.linear.x  = odometry_.getLinearX();
+  //      odom_pub_->msg_.twist.twist.linear.y  = odometry_.getLinearY();
+  //      odom_pub_->msg_.twist.twist.angular.z = odometry_.getAngular();
+  //      odom_pub_->unlockAndPublish();
+  //    }
 
-    // Publish tf /odom frame
-    if (enable_odom_tf_ && tf_odom_pub_->trylock())
-    {
-      geometry_msgs::TransformStamped& odom_frame = tf_odom_pub_->msg_.transforms[0];
-      odom_frame.header.stamp = time;
-      odom_frame.transform.translation.x = odometry_.getX();
-      odom_frame.transform.translation.y = odometry_.getY();
-      odom_frame.transform.rotation = orientation;
-      tf_odom_pub_->unlockAndPublish();
-    }
+  //    // Publish tf /odom frame
+  //    if (enable_odom_tf_ && tf_odom_pub_->trylock())
+  //    {
+  //      geometry_msgs::TransformStamped& odom_frame = tf_odom_pub_->msg_.transforms[0];
+  //      odom_frame.header.stamp = time;
+  //      odom_frame.transform.translation.x = odometry_.getX();
+  //      odom_frame.transform.translation.y = odometry_.getY();
+  //      odom_frame.transform.rotation = orientation;
+  //      tf_odom_pub_->unlockAndPublish();
+  //    }
   }
 
   // MOVE ROBOT
@@ -564,20 +605,23 @@ void MecanumDriveController::setupRtPublishersMsg(std::shared_ptr<rclcpp::Node> 
   odom_pub_->msg_.twist.twist.linear.z  = 0;
   odom_pub_->msg_.twist.twist.angular.x = 0;
   odom_pub_->msg_.twist.twist.angular.y = 0;
-  odom_pub_->msg_.twist.covariance = boost::assign::list_of
-      (static_cast<double>(twist_cov_list[0])) (0)  (0)  (0)  (0)  (0)
-      (0)  (static_cast<double>(twist_cov_list[1])) (0)  (0)  (0)  (0)
-      (0)  (0)  (static_cast<double>(twist_cov_list[2])) (0)  (0)  (0)
-      (0)  (0)  (0)  (static_cast<double>(twist_cov_list[3])) (0)  (0)
-      (0)  (0)  (0)  (0)  (static_cast<double>(twist_cov_list[4])) (0)
-      (0)  (0)  (0)  (0)  (0)  (static_cast<double>(twist_cov_list[5]));
+  odom_pub_->msg_.twist.covariance = boost::assign::list_of(static_cast<double>(twist_cov_list[0]))(
+      0)(0)(0)(0)(0)(0)(static_cast<double>(twist_cov_list[1]))(0)(0)(0)(0)(0)(0)(
+      static_cast<double>(twist_cov_list[2]))(0)(0)(0)(0)(0)(0)(static_cast<double>(
+      twist_cov_list[3]))(0)(0)(0)(0)(0)(0)(static_cast<double>(twist_cov_list[4]))(0)(0)(0)(0)(0)(
+      0)(static_cast<double>(twist_cov_list[5]));
 
-  // Setup tf msg.
-  tf_odom_pub_.reset(new realtime_tools::RealtimePublisher<tf2_msg::TFMessage>(root_nh, "/tf", 100));
-  tf_odom_pub_->msg_.transforms.resize(1);
-  tf_odom_pub_->msg_.transforms[0].transform.translation.z = 0.0;
-  tf_odom_pub_->msg_.transforms[0].child_frame_id = base_frame_id_;
-  tf_odom_pub_->msg_.transforms[0].header.frame_id = odom_frame_id_;
+  //  // Setup tf msg.
+  //  tf_odom_pub_.reset(new realtime_tools::RealtimePublisher<tf2_msg::TFMessage>(root_nh, "/tf", 100));
+  //  tf_odom_pub_->msg_.transforms.resize(1);
+  //  tf_odom_pub_->msg_.transforms[0].transform.translation.z = 0.0;
+  //  tf_odom_pub_->msg_.transforms[0].child_frame_id = base_frame_id_;
+  //  tf_odom_pub_->msg_.transforms[0].header.frame_id = odom_frame_id_;
 }
 
 } // namespace mecanum_drive_controller
+
+#include "pluginlib/class_list_macros.hpp"
+
+PLUGINLIB_EXPORT_CLASS(mecanum_drive_controller::MecanumDriveController,
+                       controller_interface::ControllerInterface)

@@ -46,7 +46,7 @@
 #include <boost/accumulators/statistics/rolling_mean.hpp>
 #include <boost/accumulators/statistics/stats.hpp>
 #include <boost/function.hpp>
-#include <rclcpp/time.h>
+#include <rclcpp/time.hpp>
 
 namespace mecanum_drive_controller
 {
@@ -70,13 +70,13 @@ public:
    * Value will be set to zero
    * \param velocity_rolling_window_size Rolling window size used to compute the velocity mean
    */
-  Odometry(size_t velocity_rolling_window_size = 10);
+  //  Odometry(size_t velocity_rolling_window_size = 10);
 
   /**
    * \brief Initialize the odometry
    * \param time Current time
    */
-  void init(const rclcpp::time::Time &time);
+  //  void init(const rclcpp::time::Time &time);
 
   /**
    * \brief Updates the odometry class with latest wheels position
@@ -87,11 +87,11 @@ public:
    * \param time      Current time
    * \return true if the odometry is actually updated
    */
-  bool update(double wheel0_vel,
-              double wheel1_vel,
-              double wheel2_vel,
-              double wheel3_vel,
-              const rclcpp::time::Time &time);
+  //  bool update(double wheel0_vel,
+  //              double wheel1_vel,
+  //              double wheel2_vel,
+  //              double wheel3_vel,
+  //              const rclcpp::time::Time &time);
 
   /**
    * \brief Updates the odometry class with latest velocity command
@@ -99,10 +99,10 @@ public:
    * \param angular Angular velocity [rad/s]
    * \param time    Current time
    */
-  void updateOpenLoop(double linearX,
-                      double linearY,
-                      double angular,
-                      const rclcpp::time::Time &time);
+  //  void updateOpenLoop(double linearX,
+  //                      double linearY,
+  //                      double angular,
+  //                      const rclcpp::time::Time &time);
 
   /**
    * \brief heading getter
@@ -177,13 +177,13 @@ private:
    * \param linearY  Linear velocity along Y [m] (linear  displacement, i.e. m/s * dt) computed by encoders
    * \param angular Angular velocity [rad] (angular displacement, i.e. m/s * dt) computed by encoders
    */
-  void integrateExact(double linearX, double linearY, double angular);
+  //  void integrateExact(double linearX, double linearY, double angular);
 
   /// Current timestamp:
   //  msg.header.stamp timestamp_;
 
   //current time as a ROS object
-  rclcpp::time::Time timestamp_;
+  //  rclcpp::time::Time timestamp_;
 
   /// Current pose:
   double x_;        //   [m]
