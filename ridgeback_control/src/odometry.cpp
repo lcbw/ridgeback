@@ -43,7 +43,8 @@
 
 //#include <tf/transform_datatypes.h>
 // we'll need to include tf2_msgs and tf2 seperately
-
+//#include <geometry_msgs/msg/vector3.h>
+//#include <geometry_msgs/msg/vector3_stamped.h>
 #include <boost/bind.hpp>
 
 namespace mecanum_drive_controller
@@ -78,6 +79,8 @@ namespace bacc = boost::accumulators;
 //  linearY_acc_ = RollingMeanAcc(RollingWindow::window_size = velocity_rolling_window_size_);
 //  angular_acc_ = RollingMeanAcc(RollingWindow::window_size = velocity_rolling_window_size_);
 
+// Reset accumulators and timestamp:
+//  resetAccumulators();
 //  // Reset timestamp:
 //  timestamp_ = time;
 //}
@@ -90,8 +93,7 @@ namespace bacc = boost::accumulators;
 //                      const rclcpp::time::Time &time)
 //{
 //    /// We cannot estimate the speed with very small time intervals:
-//    /// not sure if the below will work
-//    const double dt = (time - timestamp_).toSec();
+//  const double dt = time.seconds() - timestamp_.seconds();
 //    if (dt < 0.0001)
 //        return false; // Interval too small to integrate with
 
@@ -125,7 +127,7 @@ namespace bacc = boost::accumulators;
 //  angular_ = angular;
 
 //  /// Integrate odometry:
-//  const double dt = (time - timestamp_).toSec();
+//  const double dt = time.seconds() - timestamp_.seconds();
 //  timestamp_ = time;
 //  integrate_fun_(linearX * dt, linearY * dt, angular * dt);
 //}
@@ -141,17 +143,21 @@ void Odometry::setWheelsParams(double wheels_k, double wheels_radius)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //void Odometry::integrateExact(double linearX, double linearY, double angular)
 //{
-//  /// Integrate angular velocity.
-//  heading_ += angular;
+//    /// Integrate angular velocity.
+//    heading_ += angular;
 
-//  /// The odometry pose should be published in the /odom frame (unlike the odometry twist which is a body twist).
-//  /// Project the twist in the odometry basis (we cannot integrate linearX, linearY, angular 'as are' because they correspond to a body twist).
-//  tf::Matrix3x3 R_m_odom = tf::Matrix3x3(tf::createQuaternionFromYaw(heading_));
-//  tf::Vector3 vel_inOdom = R_m_odom * tf::Vector3(linearX, linearY, 0.0);
+//    /// The odometry pose should be published in the /odom frame (unlike the odometry twist which is a body twist).
+//    /// Project the twist in the odometry basis (we cannot integrate linearX, linearY, angular 'as are' because they correspond to a body twist).
+//    ///
+////    Eigen::M
+////        unit matrix 3x3, rotation about z of the heading
+////            multiply 3x3 matrix by the vector as is
+//    tf::Matrix3x3 R_m_odom = tf::Matrix3x3(tf::createQuaternionFromYaw(heading_));
+//    tf::Vector3 vel_inOdom = R_m_odom * tf::Vector3(linearX, linearY, 0.0);
 
-//  /// Integrate linear velocity.
-//  x_ += vel_inOdom.x();
-//  y_ += vel_inOdom.y();
+//    /// Integrate linear velocity.
+//    x_ += vel_inOdom.x();
+//    y_ += vel_inOdom.y();
 //}
 
 } // namespace mecanum_drive_controller

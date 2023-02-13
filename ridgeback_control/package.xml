@@ -14,9 +14,11 @@
   <build_depend>builtin_interfaces</build_depend>
 
   <depend>backward_ros</depend>
+  <depend>eigen</depend>
   <depend>rclcpp</depend>
   <depend>rcpputils</depend>
   <depend>controller_interface</depend>
+  <depend>geometry_msgs</depend>
 <!--  <depend>generate_parameter_library</depend>-->
   <depend>hardware_interface</depend>
   <depend>controller_manager</depend>
