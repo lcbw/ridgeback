@@ -64,6 +64,7 @@
 #include <mecanum_drive_controller/speed_limiter.h>
 #include <mecanum_drive_controller/visibility_control.h>
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp>
 #include <rclcpp_lifecycle/state.hpp>
 #include <rcpputils/asserts.hpp>
 #include <realtime_tools/realtime_box.h>
@@ -107,15 +108,14 @@ public:
    * \param period Time since the last called to update
    */
     MECANUM_DRIVE_CONTROLLER_PUBLIC
-    controller_interface::return_type update(const rclcpp::Time &time,
-                                             const rclcpp::Duration &period) const override;
+    controller_interface::return_type update() override;
 
     /**
-   * \brief Initialize controller, partially replaces init()
+   * \brief Initialize controller, partially replaces old init()
    */
+
     MECANUM_DRIVE_CONTROLLER_PUBLIC
-    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_init()
-        const override;
+    controller_interface::return_type init(const std::string &controller_name) override;
 
     //    /**
     //   * \brief Stops controller, this replaces stopping()
@@ -157,7 +157,6 @@ protected:
         std::reference_wrapper<hardware_interface::LoanedCommandInterface> velocity;
     };
 
-    const char *feedback_type() const;
     rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn configure_wheel_handles(
         const std::vector<std::string> &wheel_names, std::vector<WheelHandle> &registered_handles);
 
@@ -196,7 +195,7 @@ protected:
 
     // publish rate limiter
     double publish_rate_ = 50.0;
-    rclcpp::Duration publish_period_ = rclcpp::Duration::from_seconds(0);
+    rclcpp::Duration publish_period_{0, 0};
     rclcpp::Time previous_publish_timestamp_{0};
 
     bool reset();

@@ -44,11 +44,6 @@ mecanum_drive_controller:
     default_value: false,
     description: "If set to false the odometry of the robot will be calculated from the commanded values and not from feedback.",
   }
-  position_feedback: {
-    type: bool,
-    default_value: true,
-    description: "Is there position feedback from hardware.",
-  }
   enable_odom_tf: {
     type: bool,
     default_value: true,
