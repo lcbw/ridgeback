@@ -222,6 +222,35 @@ private:
     double wheel_separation_x;
     double wheel_separation_y;
 
+    urdf::JointConstSharedPtr urdfJoint_wheel0;
+    urdf::JointConstSharedPtr urdfJoint_wheel1;
+    urdf::JointConstSharedPtr urdfJoint_wheel2;
+    urdf::JointConstSharedPtr urdfJoint_wheel3;
+
+    double wheel_radius0;
+    double wheel_radius1;
+    double wheel_radius2;
+    double wheel_radius3;
+
+    double wheel_x0;
+    double wheel_x1;
+    double wheel_x2;
+    double wheel_x3;
+    double wheel_y0;
+    double wheel_y1;
+    double wheel_y2;
+    double wheel_y3;
+
+    double wheel_velocity_0;
+    double wheel_velocity_1;
+    double wheel_velocity_2;
+    double wheel_velocity_3;
+
+    double feedback_0;
+    double feedback_1;
+    double feedback_2;
+    double feedback_3;
+
     /// Frame to use for the robot base:
     std::string base_frame_id_;
     std::string odom_frame_id_;
@@ -233,6 +262,8 @@ private:
     SpeedLimiter limiter_linX_;
     SpeedLimiter limiter_linY_;
     SpeedLimiter limiter_ang_;
+
+    <geometry_msgs::msg::TwistStamped> command;
 
 private:
     /**

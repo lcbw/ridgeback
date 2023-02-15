@@ -57,6 +57,7 @@
 #include <hardware_interface/types/hardware_interface_type_values.hpp>
 #include <lifecycle_msgs/msg/state.h>
 #include <mecanum_drive_controller/mecanum_drive_controller.h>
+#include <tf2/LinearMath/Quaternion.h>
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace {
@@ -77,7 +78,7 @@ constexpr auto DEFAULT_TRANSFORM_TOPIC = "/tf";
 // this is just a helper function, so I don't see why this wouldn't work, has not been tested
 static bool isCylinderOrSphere(const urdf::LinkConstSharedPtr &link)
 {
-    auto logger = get_node()->get_logger();
+    rclcpp::Logger logger = get_node()->get_logger();
     if (!link) {
         RCLCPP_ERROR(logger, "Link == NULL.");
         return false;
@@ -114,6 +115,7 @@ namespace mecanum_drive_controller
 using namespace std::chrono_literals;
 using controller_interface::interface_configuration_type;
 using controller_interface::InterfaceConfiguration;
+using hardware_interface::HW_IF_POSITION;
 using hardware_interface::HW_IF_VELOCITY;
 using lifecycle_msgs::msg::State;
 
@@ -157,7 +159,7 @@ controller_interface::InterfaceConfiguration MecanumDriveController::state_inter
 {
     std::vector<std::string> conf_names;
     for (const auto &joint_name : params_.wheel_names) {
-        conf_names.push_back(joint_name + "/" + feedback_type());
+        conf_names.push_back(joint_name + "/");
     }
     return {interface_configuration_type::INDIVIDUAL, conf_names};
 }
@@ -165,7 +167,7 @@ controller_interface::InterfaceConfiguration MecanumDriveController::state_inter
 // BASICALLY PORTED* NOT TESTED!! //
 controller_interface::return_type MecanumDriveController::update()
 {
-    auto logger = get_node()->get_logger();
+    rclcpp::Logger logger = get_node()->get_logger();
 
     if (get_current_state().id() == State::PRIMARY_STATE_INACTIVE) {
         if (!is_halted) {
@@ -209,31 +211,16 @@ controller_interface::return_type MecanumDriveController::update()
                                  command.twist.angular.z,
                                  current_time);
     } else {
-        for (size_t index = 0; index < 4;
-             ++index) { //index < static_cast<size_t>(params_.wheels_per_side); ++index) {
-                        //            const double left_feedback
-            //                = registered_left_wheel_handles_[index].feedback.get().get_value();
-            //            const double right_feedback
-            //                = registered_right_wheel_handles_[index].feedback.get().get_value();
+        for (size_t index = 0; index < 4; ++index) {
             const double feedback_[index] = wheel_handle_[index].feedback.get().get_value();
-
-            if (std::isnan(feedback)) {
+            if (std::isnan(feedback_[index])) {
                 RCLCPP_ERROR(logger,
-                             "Either the left or right wheel %s is invalid for index [%zu]",
-                             feedback_type(),
+                             "Either the left or right wheel is invalid for index [%zu]",
                              index);
                 return controller_interface::return_type::ERROR;
             }
         }
-        if (params_.position_feedback) {
-            odometry_.update(left_feedback_mean, right_feedback_mean, current_time);
-        } else {
-            odometry_.updateFromVelocity(left_feedback_mean * wheel_radius
-                                             * publish_period_.seconds(),
-                                         right_feedback_mean * wheel_radius
-                                             * publish_period_.seconds(),
-                                         current_time);
-        }
+        odometry_.update(feedback_0, feedback_1, feedback_2, feedback_3, current_time);
     }
 
     tf2::Quaternion orientation;
@@ -312,7 +299,7 @@ controller_interface::return_type MecanumDriveController::update()
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
 MecanumDriveController::on_configure(const rclcpp_lifecycle::State &state)
 {
-    auto logger = get_node()->get_logger();
+    rclcpp::Logger logger = get_node()->get_logger();
 
     // update parameters if they have changed
     if (param_listener_->is_old(params_)) {
@@ -509,7 +496,7 @@ MecanumDriveController::on_shutdown(const rclcpp_lifecycle::State &)
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
 MecanumDriveController::on_activate(const rclcpp_lifecycle::State &)
 {
-    auto logger = get_node()->get_logger();
+    rclcpp::Logger logger = get_node()->get_logger();
     const auto configuration_result = configure_wheel_handles(params_.wheel_names, wheel_handle_);
 
     if (configuration_result
@@ -580,18 +567,17 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
 MecanumDriveController::configure_wheel_handles(const std::vector<std::string> &wheel_names,
                                                 std::vector<WheelHandle> &registered_handles)
 {
-    auto logger = get_node()->get_logger();
+    rclcpp::Logger logger = get_node()->get_logger();
 
     // register handles
     registered_handles.reserve(wheel_names.size());
     for (const auto &wheel_name : wheel_names) {
-        const auto interface_name = feedback_type();
         const auto state_handle
             = std::find_if(state_interfaces_.cbegin(),
                            state_interfaces_.cend(),
-                           [&wheel_name, &interface_name](const auto &interface) {
+                           [&wheel_name](const auto &interface) {
                                return interface.get_name() == wheel_name
-                                      && interface.get_interface_name() == interface_name;
+                                      && interface.get_interface_name() == HW_IF_POSITION;
                                //the helper function interface.get_prefix_name() does not exist in foxy.
                                // we'll see how get_name() fails to do what we need here
                            });
@@ -635,7 +621,7 @@ void MecanumDriveController::brake()
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
 MecanumDriveController::setWheelParamsFromUrdf(const rclcpp_lifecycle::State &)
 {
-    auto logger = get_node()->get_logger();
+    rclcpp::Logger logger = get_node()->get_logger();
     bool has_wheel_separation_x = params_.wheel_separation_x > 0.0;
     bool has_wheel_separation_y = params_.wheel_separation_y > 0.0;
 
@@ -651,108 +637,64 @@ MecanumDriveController::setWheelParamsFromUrdf(const rclcpp_lifecycle::State &)
     bool lookup_wheel_radius = (params_.wheel_radius > 0.0);
 
     // Avoid URDF requirement if wheel separation and radius already specified
-    /// TODO  BRACKET MISMATCH
+    urdf::ModelInterfaceSharedPtr model(urdf::Model::initFile(filename_));
+
     if (lookup_wheel_separation || lookup_wheel_radius) {
-        urdf::ModelInterfaceSharedPtr model(urdf::Model::initFile(filename_))
+        for (size_t index = 0; index < 4; ++index) {
+            const str wheel_name[index] = params_.wheel_names[index];
             // Get wheels position and compute parameter k_ (used in mecanum wheels IK).
-            urdf::JointConstSharedPtr wheel0_urdfJoint(model->getJoint(wheel0_name));
-        if (!wheel0_urdfJoint) {
-            RCLCPP_ERROR(logger, "%s couldn't be retrieved from model description", wheel0_name);
-            return false;
+            urdf::JointConstSharedPtr urdfJoint_wheel[index] model->getJoint(wheel_name[index]);
+            if (!urdfJoint_wheel[index]) {
+                RCLCPP_ERROR(logger,
+                             "%s couldn't be retrieved from model description",
+                             wheel_name[index]);
+                return false;
+            }
+            if (lookup_wheel_separation) {
+                RCLCPP_INFO(logger,
+                            "%s to origin: %d, %d, %d",
+                            wheel_name[index],
+                            urdfJoint_wheel[index]->parent_to_joint_origin_transform.position.x,
+                            urdfJoint_wheel[index]->parent_to_joint_origin_transform.position.y,
+                            urdfJoint_wheel[index]->parent_to_joint_origin_transform.position.z);
+            }
+            double wheel_x[index] = urdfJoint_wheel[index]
+                                        ->parent_to_joint_origin_transform.position.x;
+            double wheel_y[index] = urdfJoint_wheel[index]
+                                        ->parent_to_joint_origin_transform.position.y;
         }
-        urdf::JointConstSharedPtr wheel1_urdfJoint(model->getJoint(wheel1_name));
-        if (!wheel1_urdfJoint) {
-            RCLCPP_ERROR(logger, "%s couldn't be retrieved from model description", wheel1_name);
-            return false;
-        }
-        urdf::JointConstSharedPtr wheel2_urdfJoint(model->getJoint(wheel2_name));
-        if (!wheel2_urdfJoint) {
-            RCLCPP_ERROR(logger, "%s couldn't be retrieved from model description", wheel2_name);
-            return false;
-        }
-        urdf::JointConstSharedPtr wheel3_urdfJoint(model->getJoint(wheel3_name));
-        if (!wheel3_urdfJoint) {
-            RCLCPP_ERROR(logger, "%s couldn't be retrieved from model description", wheel3_name);
-            return false;
-        }
+        wheels_k = (-(-wheel_x0 - wheel_y0) - (wheel_x1 - wheel_y1) + (-wheel_x2 - wheel_y2)
+                    + (wheel_x3 - wheel_y3))
+                   / 4.0;
+    } else {
+        RCLCPP_INFO(logger, "Wheel seperation in X: %d", wheel_separation_x);
+        RCLCPP_INFO(logger, "Wheel seperation in Y: %d", wheel_separation_y);
 
-        if (lookup_wheel_separation) {
-            RCLCPP_INFO(logger,
-                        "wheel0 to origin: %d, %d, %d",
-                        wheel0_urdfJoint->parent_to_joint_origin_transform.position.x,
-                        wheel0_urdfJoint->parent_to_joint_origin_transform.position.y,
-                        wheel0_urdfJoint->parent_to_joint_origin_transform.position.z);
-            RCLCPP_INFO(logger,
-                        "wheel1 to origin: %d, %d, %d",
-                        wheel1_urdfJoint->parent_to_joint_origin_transform.position.x,
-                        wheel1_urdfJoint->parent_to_joint_origin_transform.position.y,
-                        wheel1_urdfJoint->parent_to_joint_origin_transform.position.z);
-            RCLCPP_INFO(logger,
-                        "wheel2 to origin: %d, %d, %d",
-                        wheel2_urdfJoint->parent_to_joint_origin_transform.position.x,
-                        wheel2_urdfJoint->parent_to_joint_origin_transform.position.y,
-                        wheel2_urdfJoint->parent_to_joint_origin_transform.position.z);
+        // The seperation is the total distance between the wheels in X and Y.
 
-            RCLCPP_INFO(logger,
-                        "wheel3 to origin: %d, %d, %d",
-                        wheel3_urdfJoint->parent_to_joint_origin_transform.position.x,
-                        wheel3_urdfJoint->parent_to_joint_origin_transform.position.y,
-                        wheel3_urdfJoint->parent_to_joint_origin_transform.position.z);
+        wheels_k = (wheel_separation_x + wheel_separation_y) / 2.0;
+    }
 
-            double wheel0_x = wheel0_urdfJoint->parent_to_joint_origin_transform.position.x;
-            double wheel0_y = wheel0_urdfJoint->parent_to_joint_origin_transform.position.y;
-            double wheel1_x = wheel1_urdfJoint->parent_to_joint_origin_transform.position.x;
-            double wheel1_y = wheel1_urdfJoint->parent_to_joint_origin_transform.position.y;
-            double wheel2_x = wheel2_urdfJoint->parent_to_joint_origin_transform.position.x;
-            double wheel2_y = wheel2_urdfJoint->parent_to_joint_origin_transform.position.y;
-            double wheel3_x = wheel3_urdfJoint->parent_to_joint_origin_transform.position.x;
-            double wheel3_y = wheel3_urdfJoint->parent_to_joint_origin_transform.position.y;
-
-            wheels_k = (-(-wheel0_x - wheel0_y) - (wheel1_x - wheel1_y) + (-wheel2_x - wheel2_y)
-                        + (wheel3_x - wheel3_y))
-                       / 4.0;
-        } else {
-            RCLCPP_INFO(logger, "Wheel seperation in X: %d", wheel_separation_x);
-            RCLCPP_INFO(logger, "Wheel seperation in Y: %d", wheel_separation_y);
-
-            // The seperation is the total distance between the wheels in X and Y.
-
-            wheels_k = (wheel_separation_x + wheel_separation_y) / 2.0;
-        }
-
-        if (lookup_wheel_radius) {
-            // Get wheels radius
-            double wheel0_radius = 0.0;
-            double wheel1_radius = 0.0;
-            double wheel2_radius = 0.0;
-            double wheel3_radius = 0.0;
+    if (lookup_wheel_radius) {
+        // Get wheels radius
+        for (size_t index = 0; index < 4; ++index) {
+            double wheel_radius[index] = 0.0;
 
             if (!getWheelRadius(model,
-                                model->getLink(wheel0_urdfJoint->child_link_name),
-                                wheel0_radius)
-                || !getWheelRadius(model,
-                                   model->getLink(wheel1_urdfJoint->child_link_name),
-                                   wheel1_radius)
-                || !getWheelRadius(model,
-                                   model->getLink(wheel2_urdfJoint->child_link_name),
-                                   wheel2_radius)
-                || !getWheelRadius(model,
-                                   model->getLink(wheel3_urdfJoint->child_link_name),
-                                   wheel3_radius)) {
-                RCLCPP_ERROR(logger, "Couldn't retrieve wheels' radius");
-                return false;
+                                model->getLink(urdfJoint_wheel[index]->child_link_name),
+                                wheel_radius[index])) {
+                RCLCPP_ERROR(logger, "Couldn't retrieve wheels %s's radius", wheel_name[index]);
+                return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
             }
-
-            if (abs(wheel0_radius - wheel1_radius) > 1e-3
-                || abs(wheel0_radius - wheel2_radius) > 1e-3
-                || abs(wheel0_radius - wheel3_radius) > 1e-3) {
-                RCLCPP_ERROR(logger, "Wheels radius are not egual");
-                return false;
-            }
-
-            wheel_radius = wheel0_radius;
         }
-    }
+
+        if (abs(wheel_radius0 - wheel_radius1) > 1e-3 || abs(wheel_radius0 - wheel_radius2) > 1e-3
+            || abs(wheel_radius0 - wheel_radius3) > 1e-3) {
+            RCLCPP_ERROR(logger, "Wheels radius are not egual");
+            return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
+        }
+    } else
+        wheel_radius = wheel_radius0;
 
     RCLCPP_INFO(logger, "Wheel radius: %d", wheel_radius);
 
@@ -769,7 +711,7 @@ bool MecanumDriveController::getWheelRadius(const urdf::ModelInterfaceSharedPtr 
                                             const urdf::LinkConstSharedPtr &wheel_link,
                                             double &wheel_radius)
 {
-    auto logger = get_node()->get_logger();
+    rclcpp::Logger logger = get_node()->get_logger();
     urdf::LinkConstSharedPtr radius_link = wheel_link;
     if (!isCylinderOrSphere(radius_link)) {
         RCLCPP_ERROR(logger, "Wheel link %d is NOT modeled as a cylinder!", radius_link->name);

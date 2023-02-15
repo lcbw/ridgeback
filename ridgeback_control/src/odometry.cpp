@@ -46,9 +46,9 @@
 //#include <geometry_msgs/msg/vector3.h>
 //#include <geometry_msgs/msg/vector3_stamped.h>
 #include <boost/bind.hpp>
+#include <eigen3/Eigen/Geometry>
 
-namespace mecanum_drive_controller
-{
+namespace mecanum_drive_controller {
 namespace bacc = boost::accumulators;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -159,6 +159,20 @@ void Odometry::integrateExact(double linearX, double linearY, double angular)
     /// Integrate linear velocity.
     x_ += vel_inOdom.x();
     y_ += vel_inOdom.y();
+}
+
+void Odometry::setVelocityRollingWindowSize(size_t velocity_rolling_window_size)
+{
+    velocity_rolling_window_size_ = velocity_rolling_window_size;
+
+    resetAccumulators();
+}
+
+void Odometry::resetAccumulators()
+{
+    linearX_acc_ = RollingMeanAccumulator(velocity_rolling_window_size_);
+    linearY_acc_ = RollingMeanAccumulator(velocity_rolling_window_size_);
+    angular_acc_ = RollingMeanAccumulator(velocity_rolling_window_size_);
 }
 
 } // namespace mecanum_drive_controller

@@ -42,11 +42,12 @@
 #ifndef ODOMETRY_H_
 #define ODOMETRY_H_
 
-#include <Eigen3>
+#include "rolling_mean_accumulator.h"
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/rolling_mean.hpp>
 #include <boost/accumulators/statistics/stats.hpp>
 #include <boost/function.hpp>
+#include <eigen3/Eigen/Geometry>
 #include <rclcpp/time.hpp>
 
 namespace mecanum_drive_controller
@@ -163,10 +164,12 @@ public:
    */
   void setWheelsParams(double wheels_k, double wheels_radius);
 
-private:
+  void setVelocityRollingWindowSize(size_t velocity_rolling_window_size);
 
+  private:
+  using RollingMeanAccumulator = mecanum_drive_controller::RollingMeanAccumulator<double>;
   /// Rolling mean accumulator and window:
-  typedef bacc::accumulator_set<double, bacc::stats<bacc::tag::rolling_mean> > RollingMeanAcc;
+  typedef bacc::accumulator_set<double, bacc::stats<bacc::tag::rolling_mean>> RollingMeanAcc;
   typedef bacc::tag::rolling_window RollingWindow;
 
   /**
@@ -184,13 +187,13 @@ private:
   rclcpp::Time timestamp_;
 
   /// Current pose:
-  double x_;        //   [m]
-  double y_;        //   [m]
-  double heading_;  // [rad]
+  double x_;       //   [m]
+  double y_;       //   [m]
+  double heading_; // [rad]
 
   /// Current velocity:
-  double linearX_;  //   [m/s]
-  double linearY_;  //   [m/s]
+  double linearX_; //   [m/s]
+  double linearY_; //   [m/s]
   double angular_; // [rad/s]
 
   /// Wheels kinematic parameters [m]:
@@ -203,6 +206,7 @@ private:
   RollingMeanAcc linearY_acc_;
   RollingMeanAcc angular_acc_;
 
+  void resetAccumulators();
   /// Integration funcion, used to integrate the odometry:
   IntegrationFunction integrate_fun_;
 };
