@@ -1,3 +1,4 @@
+mecanum_drive_controller:
   wheel_names: {
     type: string_array,
     default_value: [],

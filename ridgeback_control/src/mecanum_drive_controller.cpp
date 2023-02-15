@@ -46,12 +46,13 @@
 #include <vector>
 #include <queue>
 
+#include <lifecycle_msgs/msg/state.hpp>
 #include <rclcpp/logging.hpp>
 #include <rclcpp/qos.hpp>
+#include <rclcpp_lifecycle/state.hpp>
 #include <urdf_parser/urdf_parser.h>
 
 #include <boost/assign.hpp>
-
 #include <eigen3/Eigen/Geometry>
 #include <hardware_interface/types/hardware_interface_type_values.hpp>
 #include <lifecycle_msgs/msg/state.h>
@@ -76,13 +77,14 @@ constexpr auto DEFAULT_TRANSFORM_TOPIC = "/tf";
 // this is just a helper function, so I don't see why this wouldn't work, has not been tested
 static bool isCylinderOrSphere(const urdf::LinkConstSharedPtr &link)
 {
+    auto logger = node_->get_logger();
     if (!link) {
-        RCLCPP_ERROR(get_node->logger(), "Link == NULL.");
+        RCLCPP_ERROR(logger, "Link == NULL.");
         return false;
     }
 
     if (!link->collision) {
-        RCLCPP_ERROR(get_node->logger(),
+        RCLCPP_ERROR(logger,
                      "Link " << link->name
                              << " does not have collision description. Add collision description "
                                 "for link to urdf.");
@@ -90,7 +92,7 @@ static bool isCylinderOrSphere(const urdf::LinkConstSharedPtr &link)
     }
 
     if (!link->collision->geometry) {
-        RCLCPP_ERROR(get_node->logger(),
+        RCLCPP_ERROR(logger,
                      "Link " << link->name
                              << " does not have collision geometry description. Add collision "
                                 "geometry description for link to urdf.");
@@ -99,8 +101,7 @@ static bool isCylinderOrSphere(const urdf::LinkConstSharedPtr &link)
 
     if (link->collision->geometry->type != urdf::Geometry::CYLINDER
         && link->collision->geometry->type != urdf::Geometry::SPHERE) {
-        RCLCPP_ERROR(get_node->logger(),
-                     "Link " << link->name << " does not have cylinder nor sphere geometry");
+        RCLCPP_ERROR(logger, "Link " << link->name << " does not have cylinder nor sphere geometry");
         return false;
     }
 
@@ -130,23 +131,25 @@ const char *MecanumDriveController::feedback_type() const
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // BASICALLY PORTED* NOT TESTED!! //
-controller_interface::CallbackReturn MecanumDriveController::on_init()
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+MecanumDriveController::on_init()
 {
     try {
         // Create the parameter listener and get the parameters
-        param_listener_ = std::make_shared<ParamListener>(get_node());
+        param_listener_ = std::make_shared<mecanum_drive_controller::ParamListener>(node_);
         params_ = param_listener_->get_params();
     } catch (const std::exception &e) {
         fprintf(stderr, "Exception thrown during init stage with message: %s \n", e.what());
-        return controller_interface::CallbackReturn::ERROR;
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
     }
 
-    return controller_interface::CallbackReturn::SUCCESS;
+    return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // BASICALLY PORTED* NOT TESTED!! //
-InterfaceConfiguration MecanumDriveController::command_interface_configuration() const
+controller_interface::InterfaceConfiguration MecanumDriveController::command_interface_configuration()
+    const
 {
     std::vector<std::string> conf_names;
     for (const auto &joint_name : params_.wheel_names) {
@@ -157,7 +160,8 @@ InterfaceConfiguration MecanumDriveController::command_interface_configuration()
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // BASICALLY PORTED* NOT TESTED!! //
-InterfaceConfiguration MecanumDriveController::state_interface_configuration() const
+controller_interface::InterfaceConfiguration MecanumDriveController::state_interface_configuration()
+    const
 {
     std::vector<std::string> conf_names;
     for (const auto &joint_name : params_.wheel_names) {
@@ -170,7 +174,7 @@ InterfaceConfiguration MecanumDriveController::state_interface_configuration() c
 controller_interface::return_type MecanumDriveController::update(const rclcpp::Time &time,
                                                                  const rclcpp::Duration &period)
 {
-    auto logger = get_node()->get_logger();
+    auto logger = node_->get_logger();
     if (get_state().id() == State::PRIMARY_STATE_INACTIVE) {
         if (!is_halted) {
             halt();
@@ -179,7 +183,7 @@ controller_interface::return_type MecanumDriveController::update(const rclcpp::T
         return controller_interface::return_type::OK;
     }
 
-    std::shared_ptr<Twist> last_command_msg;
+    std::shared_ptr<geometry_msgs::msg::TwistStamped> last_command_msg;
     received_velocity_msg_ptr_.get(last_command_msg);
 
     if (last_command_msg == nullptr) {
@@ -297,16 +301,16 @@ controller_interface::return_type MecanumDriveController::update(const rclcpp::T
     // NOTE: the input desired twist (from topic /cmd_vel) is a body twist.
     const double wheel_velocity_0 = 1.0 / wheel_radius_
                                     * (linear_command_x - linear_command_y
-                                       - wheels_k_ * angular_command);
+                                       - wheels_k * angular_command);
     const double wheel_velocity_1 = 1.0 / wheel_radius_
                                     * (linear_command_x + linear_command_y
-                                       - wheels_k_ * angular_command);
+                                       - wheels_k * angular_command);
     const double wheel_velocity_2 = 1.0 / wheel_radius
                                     * (linear_command_x - linear_command_y
-                                       + wheels_k_ * angular_command);
+                                       + wheels_k * angular_command);
     const double wheel_velocity_3 = 1.0 / wheel_radius_
                                     * (linear_command_x + linear_command_y
-                                       + wheels_k_ * angular_command);
+                                       + wheels_k * angular_command);
     // Set wheels velocities:
     for (size_t index = 0; index < 4; ++index) {
         wheel_handle_[index].velocity.get().set_value(wheel_velocity_[index]);
@@ -316,10 +320,10 @@ controller_interface::return_type MecanumDriveController::update(const rclcpp::T
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // BASICALLY PORTED* NOT TESTED!! //
-controller_interface::CallbackReturn MecanumDriveController::on_configure(
-    const rclcpp_lifecycle::State &state)
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+MecanumDriveController::on_configure(const rclcpp_lifecycle::State &state)
 {
-    auto logger = get_node()->get_logger();
+    auto logger = node_->get_logger();
 
     // update parameters if they have changed
     if (param_listener_->is_old(params_)) {
@@ -329,51 +333,50 @@ controller_interface::CallbackReturn MecanumDriveController::on_configure(
 
     if (params_.wheel_names.empty()) {
         RCLCPP_ERROR(logger, "Wheel names parameters are empty!");
-        return controller_interface::CallbackReturn::ERROR;
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
     }
 
     // Set wheel params for the odometry computation // this is where wheel_k_ is calculated
-    if (setWheelParamsFromUrdf(state) != controller_interface::CallbackReturn::SUCCESS)
+    if (setWheelParamsFromUrdf(state)
+        != rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS)
         RCLCPP_ERROR(logger, "Unable to set wheel parameters");
-    return controller_interface::CallbackReturn::ERROR;
+    return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
 
-    const double left_wheel_radius = params_.wheel_radius;
-    const double right_wheel_radius = params_.wheel_radius;
     odometry_.setVelocityRollingWindowSize(params_.velocity_rolling_window_size);
 
     cmd_vel_timeout_ = std::chrono::milliseconds{
-        static_cast<int>(get_node()->get_parameter("cmd_vel_timeout").as_double() * 1000.0)};
-    publish_limited_velocity_ = get_node()->get_parameter("publish_limited_velocity").as_bool();
-    use_stamped_vel_ = get_node()->get_parameter("use_stamped_vel").as_bool();
+        static_cast<int>(node_->get_parameter("cmd_vel_timeout").as_double() * 1000.0)};
+    publish_limited_velocity_ = node_->get_parameter("publish_limited_velocity").as_bool();
+    use_stamped_vel_ = node_->get_parameter("use_stamped_vel").as_bool();
 
     //  // Velocity and acceleration limits:
-    limiter_linear_x = SpeedLimiter(params_.linear.x.has_velocity_limits,
-                                    params_.linear.x.has_acceleration_limits,
-                                    params_.linear.x.min_velocity,
-                                    params_.linear.x.max_velocity,
-                                    params_.linear.x.min_acceleration,
-                                    params_.linear.x.max_acceleration);
+    limiter_linX_ = SpeedLimiter(params_.linear.x.has_velocity_limits,
+                                 params_.linear.x.has_acceleration_limits,
+                                 params_.linear.x.min_velocity,
+                                 params_.linear.x.max_velocity,
+                                 params_.linear.x.min_acceleration,
+                                 params_.linear.x.max_acceleration);
 
-    limiter_linear_y = SpeedLimiter(params_.linear.y.has_velocity_limits,
-                                    params_.linear.y.has_acceleration_limits,
-                                    params_.linear.y.min_velocity,
-                                    params_.linear.y.max_velocity,
-                                    params_.linear.y.min_acceleration,
-                                    params_.linear.y.max_acceleration);
+    limiter_linY_ = SpeedLimiter(params_.linear.y.has_velocity_limits,
+                                 params_.linear.y.has_acceleration_limits,
+                                 params_.linear.y.min_velocity,
+                                 params_.linear.y.max_velocity,
+                                 params_.linear.y.min_acceleration,
+                                 params_.linear.y.max_acceleration);
 
-    limiter_angular_ = SpeedLimiter(params_.angular.z.has_velocity_limits,
-                                    params_.angular.z.has_acceleration_limits,
-                                    params_.angular.z.min_velocity,
-                                    params_.angular.z.max_velocity,
-                                    params_.angular.z.min_acceleration,
-                                    params_.angular.z.max_acceleration);
+    limiter_ang_ = SpeedLimiter(params_.angular.z.has_velocity_limits,
+                                params_.angular.z.has_acceleration_limits,
+                                params_.angular.z.min_velocity,
+                                params_.angular.z.max_velocity,
+                                params_.angular.z.min_acceleration,
+                                params_.angular.z.max_acceleration);
 
     if (!reset()) {
-        return controller_interface::CallbackReturn::ERROR;
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
     }
 
-    const Twist empty_twist;
-    received_velocity_msg_ptr_.set(std::make_shared<Twist>(empty_twist));
+    const geometry_msgs::msg::TwistStamped empty_twist;
+    received_velocity_msg_ptr_.set(std::make_shared<geometry_msgs::msg::TwistStamped>(empty_twist));
 
     // Fill last two commands with default constructed commands
     previous_commands_.emplace(empty_twist);
@@ -383,54 +386,52 @@ controller_interface::CallbackReturn MecanumDriveController::on_configure(
 
     // initialize command subscriber
     if (use_stamped_vel_) {
-        velocity_command_subscriber_ = get_node()->create_subscription<Twist>(
+        velocity_command_subscriber_ = node_->create_subscription<geometry_msgs::msg::TwistStamped>(
             DEFAULT_COMMAND_TOPIC,
             rclcpp::SystemDefaultsQoS(),
-            [this](const std::shared_ptr<Twist> msg) -> void {
+            [this](const std::shared_ptr<geometry_msgs::msg::TwistStamped> msg) -> void {
                 if (!subscriber_is_active_) {
-                    RCLCPP_WARN(get_node()->get_logger(),
-                                "Can't accept new commands. subscriber is inactive");
+                    RCLCPP_WARN(logger, "Can't accept new commands. subscriber is inactive");
                     return;
                 }
                 if ((msg->header.stamp.sec == 0) && (msg->header.stamp.nanosec == 0)) {
                     RCLCPP_WARN_ONCE(
-                        get_node()->get_logger(),
+                        logger,
                         "Received TwistStamped with zero timestamp, setting it to current "
                         "time, this message will only be shown once");
-                    msg->header.stamp = get_node()->get_clock()->now();
+                    msg->header.stamp = node_->get_clock()->now();
                 }
                 received_velocity_msg_ptr_.set(std::move(msg));
             });
     } else {
         velocity_command_unstamped_subscriber_
-            = get_node()->create_subscription<geometry_msgs::msg::Twist>(
+            = node_->create_subscription<geometry_msgs::msg::Twist>(
                 DEFAULT_COMMAND_UNSTAMPED_TOPIC,
                 rclcpp::SystemDefaultsQoS(),
                 [this](const std::shared_ptr<geometry_msgs::msg::Twist> msg) -> void {
                     if (!subscriber_is_active_) {
-                        RCLCPP_WARN(get_node()->get_logger(),
-                                    "Can't accept new commands. subscriber is inactive");
+                        RCLCPP_WARN(logger, "Can't accept new commands. subscriber is inactive");
                         return;
                     }
 
                     // Write fake header in the stored stamped command
-                    std::shared_ptr<Twist> twist_stamped;
+                    std::shared_ptr<geometry_msgs::msg::TwistStamped> twist_stamped;
                     received_velocity_msg_ptr_.get(twist_stamped);
                     twist_stamped->twist = *msg;
-                    twist_stamped->header.stamp = get_node()->get_clock()->now();
+                    twist_stamped->header.stamp = node_->get_clock()->now();
                 });
     }
 
     // The following portion REPLACES setupRtPublishersMsg
     // initialize odometry publisher and messasge
     odometry_publisher_
-        = get_node()->create_publisher<nav_msgs::msg::Odometry>(DEFAULT_ODOMETRY_TOPIC,
-                                                                rclcpp::SystemDefaultsQoS());
+        = node_->create_publisher<nav_msgs::msg::Odometry>(DEFAULT_ODOMETRY_TOPIC,
+                                                           rclcpp::SystemDefaultsQoS());
     realtime_odometry_publisher_
         = std::make_shared<realtime_tools::RealtimePublisher<nav_msgs::msg::Odometry>>(
             odometry_publisher_);
 
-    std::string controller_namespace = std::string(get_node()->get_namespace());
+    std::string controller_namespace = std::string(node_->get_namespace());
 
     if (controller_namespace == "/") {
         controller_namespace = "";
@@ -447,9 +448,9 @@ controller_interface::CallbackReturn MecanumDriveController::on_configure(
     odometry_message.child_frame_id = controller_namespace + base_frame_id;
 
     // limit the publication on the topics /odom and /tf
-    publish_rate_ = get_node()->get_parameter("publish_rate").as_double();
+    publish_rate_ = node_->get_parameter("publish_rate").as_double();
     publish_period_ = rclcpp::Duration::from_seconds(1.0 / publish_rate_);
-    previous_publish_timestamp_ = get_node()->get_clock()->now();
+    previous_publish_timestamp_ = node_->get_clock()->now();
 
     // initialize odom values zeros
     odometry_message.twist = geometry_msgs::msg::TwistWithCovariance(
@@ -478,8 +479,8 @@ controller_interface::CallbackReturn MecanumDriveController::on_configure(
 
     // initialize transform publisher and message
     odometry_transform_publisher_
-        = get_node()->create_publisher<tf2_msgs::msg::TFMessage>(DEFAULT_TRANSFORM_TOPIC,
-                                                                 rclcpp::SystemDefaultsQoS());
+        = node_->create_publisher<tf2_msgs::msg::TFMessage>(DEFAULT_TRANSFORM_TOPIC,
+                                                            rclcpp::SystemDefaultsQoS());
     realtime_odometry_transform_publisher_
         = std::make_shared<realtime_tools::RealtimePublisher<tf2_msgs::msg::TFMessage>>(
             odometry_transform_publisher_);
@@ -492,8 +493,8 @@ controller_interface::CallbackReturn MecanumDriveController::on_configure(
     odometry_transform_message.transforms.front().child_frame_id = base_frame_id;
     odometry_transform_message.transforms.front().transform.translation.z = 0.0;
 
-    previous_update_timestamp_ = get_node()->get_clock()->now();
-    return controller_interface::CallbackReturn::SUCCESS;
+    previous_update_timestamp_ = node_->get_clock()->now();
+    return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 //////////////////////////////////////////////////////////////////////
 
@@ -508,71 +509,73 @@ void MecanumDriveController::starting(const rclcpp::time::Time &time)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // SHOULD BE PORTED!! //
-controller_interface::CallbackReturn MecanumDriveController::on_shutdown(
-    const rclcpp_lifecycle::State &)
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+MecanumDriveController::on_shutdown(const rclcpp_lifecycle::State &)
 {
     brake();
-    return controller_interface::CallbackReturn::SUCCESS;
+    return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 
-controller_interface::CallbackReturn MecanumDriveController::on_activate(
-    const rclcpp_lifecycle::State &)
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+MecanumDriveController::on_activate(const rclcpp_lifecycle::State &)
 {
+    auto logger = node_->get_logger();
     const auto configuration_result = configure_wheel_handles(params_.wheel_names, wheel_handle_);
 
-    if (configuration_result == controller_interface::CallbackReturn::ERROR) {
-        return controller_interface::CallbackReturn::ERROR;
+    if (configuration_result
+        == rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR) {
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
     }
 
     if (wheel_handle_.empty()) {
-        RCLCPP_ERROR(get_node()->get_logger(),
+        RCLCPP_ERROR(logger,
                      "Either left wheel interfaces, right wheel interfaces are non existent");
-        return controller_interface::CallbackReturn::ERROR;
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
     }
 
     is_halted = false;
     subscriber_is_active_ = true;
 
-    RCLCPP_DEBUG(get_node()->get_logger(), "Subscriber and publisher are now active.");
-    return controller_interface::CallbackReturn::SUCCESS;
+    RCLCPP_DEBUG(logger, "Subscriber and publisher are now active.");
+    return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 
-controller_interface::CallbackReturn MecanumDriveController::on_deactivate(
-    const rclcpp_lifecycle::State &)
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+MecanumDriveController::on_deactivate(const rclcpp_lifecycle::State &)
 {
     subscriber_is_active_ = false;
-    return controller_interface::CallbackReturn::SUCCESS;
+    return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 
-controller_interface::CallbackReturn MecanumDriveController::on_cleanup(
-    const rclcpp_lifecycle::State &)
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+MecanumDriveController::on_cleanup(const rclcpp_lifecycle::State &)
 {
     if (!reset()) {
-        return controller_interface::CallbackReturn::ERROR;
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
     }
 
-    received_velocity_msg_ptr_.set(std::make_shared<Twist>());
-    return controller_interface::CallbackReturn::SUCCESS;
+    received_velocity_msg_ptr_.set(std::make_shared<geometry_msgs::msg::TwistStamped>());
+    return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 
-controller_interface::CallbackReturn MecanumDriveController::on_error(const rclcpp_lifecycle::State &)
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+MecanumDriveController::on_error(const rclcpp_lifecycle::State &)
 {
     if (!reset()) {
-        return controller_interface::CallbackReturn::ERROR;
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
     }
-    return controller_interface::CallbackReturn::SUCCESS;
+    return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 
 bool MecanumDriveController::reset()
 {
-    odometry_.resetOdometry();
+    //    odometry_.resetOdometry(); // this does not exist in our Odometry script at the moment
 
     // release the old queue
-    std::queue<Twist> empty;
+    std::queue<geometry_msgs::msg::TwistStamped> empty;
     std::swap(previous_commands_, empty);
 
-    registered_left_wheel_handles_.clear();
-    registered_right_wheel_handles_.clear();
+    wheel_handle_.clear();
 
     subscriber_is_active_ = false;
     velocity_command_subscriber_.reset();
@@ -583,27 +586,29 @@ bool MecanumDriveController::reset()
     return true;
 }
 
-controller_interface::CallbackReturn MecanumDriveController::configure_wheel_handles(
-    const std::vector<std::string> &wheel_names, std::vector<WheelHandle> &registered_handles)
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+MecanumDriveController::configure_wheel_handles(const std::vector<std::string> &wheel_names,
+                                                std::vector<WheelHandle> &registered_handles)
 {
-    auto logger = get_node()->get_logger();
+    auto logger = node_->get_logger();
 
     // register handles
     registered_handles.reserve(wheel_names.size());
     for (const auto &wheel_name : wheel_names) {
         const auto interface_name = feedback_type();
-        const auto state_handle = std::find_if(state_interfaces_.cbegin(),
-                                               state_interfaces_.cend(),
-                                               [&wheel_name,
-                                                &interface_name](const auto &interface) {
-                                                   return interface.get_prefix_name() == wheel_name
-                                                          && interface.get_interface_name()
-                                                                 == interface_name;
-                                               });
+        const auto state_handle
+            = std::find_if(state_interfaces_.cbegin(),
+                           state_interfaces_.cend(),
+                           [&wheel_name, &interface_name](const auto &interface) {
+                               return interface.get_name() == wheel_name
+                                      && interface.get_interface_name() == interface_name;
+                               //the helper function interface.get_prefix_name() does not exist in foxy.
+                               // we'll see how get_name() fails to do what we need here
+                           });
 
         if (state_handle == state_interfaces_.cend()) {
             RCLCPP_ERROR(logger, "Unable to obtain joint state handle for %s", wheel_name.c_str());
-            return controller_interface::CallbackReturn::ERROR;
+            return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
         }
 
         const auto command_handle = std::find_if(command_interfaces_.begin(),
@@ -617,14 +622,14 @@ controller_interface::CallbackReturn MecanumDriveController::configure_wheel_han
 
         if (command_handle == command_interfaces_.end()) {
             RCLCPP_ERROR(logger, "Unable to obtain joint command handle for %s", wheel_name.c_str());
-            return controller_interface::CallbackReturn::ERROR;
+            return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
         }
 
         registered_handles.emplace_back(
             WheelHandle{std::ref(*state_handle), std::ref(*command_handle)});
     }
 
-    return controller_interface::CallbackReturn::SUCCESS;
+    return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -638,15 +643,16 @@ void MecanumDriveController::brake()
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // SHOULD BE PORTED!! //
-controller_interface::CallbackReturn MecanumDriveController::setWheelParamsFromUrdf(
-    const rclcpp_lifecycle::State &)
+rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+MecanumDriveController::setWheelParamsFromUrdf(const rclcpp_lifecycle::State &)
 {
-    bool has_wheel_separation_x = params_.wheel_seperation_x > 0.0;
-    bool has_wheel_separation_y = params_.wheel_seperation_y > 0.0;
+    auto logger = node_->get_logger();
+    bool has_wheel_separation_x = params_.wheel_separation_x > 0.0;
+    bool has_wheel_separation_y = params_.wheel_separation_y > 0.0;
 
     if (has_wheel_separation_x != has_wheel_separation_y) {
         RCLCPP_ERROR(logger, "Only one wheel separation overrided");
-        return controller_interface::CallbackReturn::ERROR;
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
     }
     const double wheel_separation_x = params_.wheel_separation_x;
     const double wheel_separation_y = params_.wheel_separation_y;
@@ -657,57 +663,58 @@ controller_interface::CallbackReturn MecanumDriveController::setWheelParamsFromU
 
     // Avoid URDF requirement if wheel separation and radius already specified
     if (lookup_wheel_separation || lookup_wheel_radius) {
-        urdf::ModelInterfaceSharedPtr model(urdf::initFile(filename_)));
+        urdf::ModelInterfaceSharedPtr model(urdf::Model::initFile(filename_))
+    };
 
         // Get wheels position and compute parameter k_ (used in mecanum wheels IK).
         urdf::JointConstSharedPtr wheel0_urdfJoint(model->getJoint(wheel0_name));
         if (!wheel0_urdfJoint) {
-            RCLCPP_ERROR_STREAM(root_nh->get_logger(),
+            RCLCPP_ERROR_STREAM(logger,
                                 wheel0_name << " couldn't be retrieved from model description");
             return false;
         }
         urdf::JointConstSharedPtr wheel1_urdfJoint(model->getJoint(wheel1_name));
         if (!wheel1_urdfJoint) {
-            RCLCPP_ERROR_STREAM(root_nh->get_logger(),
+            RCLCPP_ERROR_STREAM(logger,
                                 wheel1_name << " couldn't be retrieved from model description");
             return false;
         }
         urdf::JointConstSharedPtr wheel2_urdfJoint(model->getJoint(wheel2_name));
         if (!wheel2_urdfJoint) {
-            RCLCPP_ERROR_STREAM(root_nh->get_logger(),
+            RCLCPP_ERROR_STREAM(logger,
                                 wheel2_name << " couldn't be retrieved from model description");
             return false;
         }
         urdf::JointConstSharedPtr wheel3_urdfJoint(model->getJoint(wheel3_name));
         if (!wheel3_urdfJoint) {
-            RCLCPP_ERROR_STREAM(root_nh->get_logger(),
+            RCLCPP_ERROR_STREAM(logger,
                                 wheel3_name << " couldn't be retrieved from model description");
             return false;
         }
 
         if (lookup_wheel_separation) {
-            RCLCPP_INFO_STREAM(root_nh->get_logger(),
+            RCLCPP_INFO_STREAM(logger,
                                "wheel0 to origin: "
                                    << wheel0_urdfJoint->parent_to_joint_origin_transform.position.x
                                    << ","
                                    << wheel0_urdfJoint->parent_to_joint_origin_transform.position.y
                                    << ", "
                                    << wheel0_urdfJoint->parent_to_joint_origin_transform.position.z);
-            RCLCPP_INFO_STREAM(root_nh->get_logger(),
+            RCLCPP_INFO_STREAM(logger,
                                "wheel1 to origin: "
                                    << wheel1_urdfJoint->parent_to_joint_origin_transform.position.x
                                    << ","
                                    << wheel1_urdfJoint->parent_to_joint_origin_transform.position.y
                                    << ", "
                                    << wheel1_urdfJoint->parent_to_joint_origin_transform.position.z);
-            RCLCPP_INFO_STREAM(root_nh->get_logger(),
+            RCLCPP_INFO_STREAM(logger,
                                "wheel2 to origin: "
                                    << wheel2_urdfJoint->parent_to_joint_origin_transform.position.x
                                    << ","
                                    << wheel2_urdfJoint->parent_to_joint_origin_transform.position.y
                                    << ", "
                                    << wheel2_urdfJoint->parent_to_joint_origin_transform.position.z);
-            RCLCPP_INFO_STREAM(root_nh->get_logger(),
+            RCLCPP_INFO_STREAM(logger,
                                "wheel3 to origin: "
                                    << wheel3_urdfJoint->parent_to_joint_origin_transform.position.x
                                    << ","
@@ -724,18 +731,16 @@ controller_interface::CallbackReturn MecanumDriveController::setWheelParamsFromU
             double wheel3_x = wheel3_urdfJoint->parent_to_joint_origin_transform.position.x;
             double wheel3_y = wheel3_urdfJoint->parent_to_joint_origin_transform.position.y;
 
-            wheels_k_ = (-(-wheel0_x - wheel0_y) - (wheel1_x - wheel1_y) + (-wheel2_x - wheel2_y)
-                         + (wheel3_x - wheel3_y))
-                        / 4.0;
+            wheels_k = (-(-wheel0_x - wheel0_y) - (wheel1_x - wheel1_y) + (-wheel2_x - wheel2_y)
+                        + (wheel3_x - wheel3_y))
+                       / 4.0;
         } else {
-            RCLCPP_INFO_STREAM(root_nh->get_logger(),
-                               "Wheel seperation in X: " << wheel_separation_x_);
-            RCLCPP_INFO_STREAM(root_nh->get_logger(),
-                               "Wheel seperation in Y: " << wheel_separation_y_);
+            RCLCPP_INFO_STREAM(logger, "Wheel seperation in X: " << wheel_separation_x);
+            RCLCPP_INFO_STREAM(logger, "Wheel seperation in Y: " << wheel_separation_y);
 
             // The seperation is the total distance between the wheels in X and Y.
 
-            wheels_k_ = (wheel_separation_x_ + wheel_separation_y_) / 2.0;
+            wheels_k = (wheel_separation_x + wheel_separation_y) / 2.0;
         }
 
         if (lookup_wheel_radius) {
@@ -757,14 +762,14 @@ controller_interface::CallbackReturn MecanumDriveController::setWheelParamsFromU
                 || !getWheelRadius(model,
                                    model->getLink(wheel3_urdfJoint->child_link_name),
                                    wheel3_radius)) {
-                RCLCPP_ERROR_STREAM(root_nh->get_logger(), "Couldn't retrieve wheels' radius");
+                RCLCPP_ERROR_STREAM(logger, "Couldn't retrieve wheels' radius");
                 return false;
             }
 
             if (abs(wheel0_radius - wheel1_radius) > 1e-3
                 || abs(wheel0_radius - wheel2_radius) > 1e-3
                 || abs(wheel0_radius - wheel3_radius) > 1e-3) {
-                RCLCPP_ERROR_STREAM(root_nh->get_logger(), "Wheels radius are not egual");
+                RCLCPP_ERROR_STREAM(logger, "Wheels radius are not egual");
                 return false;
             }
 
@@ -772,12 +777,12 @@ controller_interface::CallbackReturn MecanumDriveController::setWheelParamsFromU
         }
     }
 
-    RCLCPP_INFO_STREAM(root_nh->get_logger(), "Wheel radius: " << wheel_radius_);
+    RCLCPP_INFO_STREAM(logger, "Wheel radius: " << wheel_radius_);
 
     // Set wheel params for the odometry computation
-    odometry_.setWheelsParams(wheels_k_, wheel_radius_);
+    odometry_.setWheelsParams(wheels_k, wheel_radius_);
 
-    return controller_interface::CallbackReturn::SUCCESS;
+    return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -787,9 +792,10 @@ bool MecanumDriveController::getWheelRadius(const urdf::ModelInterfaceSharedPtr 
                                             const urdf::LinkConstSharedPtr &wheel_link,
                                             double &wheel_radius)
 {
+    auto logger = node_->get_logger();
     urdf::LinkConstSharedPtr radius_link = wheel_link;
     if (!isCylinderOrSphere(radius_link)) {
-        RCLCPP_ERROR_STREAM(get_node()->get_logger(),
+        RCLCPP_ERROR_STREAM(logger,
                             "Wheel link " << radius_link->name << " is NOT modeled as a cylinder!");
         return false;
     }

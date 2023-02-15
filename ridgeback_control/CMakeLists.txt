@@ -18,7 +18,7 @@ endif()
 
 set(THIS_PACKAGE_INCLUDE_DEPENDS
     controller_interface
-#    generate_parameter_library
+    generate_parameter_library
     Eigen3
     geometry_msgs
     hardware_interface
@@ -38,37 +38,22 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
 find_package(ament_cmake REQUIRED)
 find_package(backward_ros REQUIRED)
 
-#include_directories(include
-#  ${controller_interface_INCLUDE_DIRS}
-#  ${urdf_INCLUDE_DIRS}
-#  ${realtime_tools_INCLUDE_DIRS}
-#  ${tf2_INCLUDE_DIRS}
-#  ${nav_msgs_INCLUDE_DIRS}
-#  ${rclcpp_INCLUDE_DIRS})​
-find_package(backward_ros REQUIRED)
 foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
   find_package(${Dependency} REQUIRED)
 endforeach()
 
-#generate_parameter_library(
-#  mecanum_drive_controller_parameters
-#  config/mecanum_drive_controller_parameters.yaml
-#)
+generate_parameter_library(
+  mecanum_drive_controller_parameters
+  config/mecanum_drive_controller_parameters.yaml
+)
 
 add_library(mecanum_drive_controller SHARED
   src/mecanum_drive_controller.cpp
   src/odometry.cpp
   src/speed_limiter.cpp)
 
-#target_link_libraries(mecanum_drive_controller​
-#  ${controller_interface_LIBRARIES​}
-#  ${nav_msgs_LIBRARIES​}​
-#  ${rclcpp_LIBRARIES​}​
-#  ${realtime_tools​_LIBRARIES​}
-#  ${tf2_LIBRARIES​}​
-#  ${urdf_LIBRARIES​})
-
-ament_target_dependencies(mecanum_drive_controller
+target_link_libraries(mecanum_drive_controller PUBLIC mecanum_drive_controller_parameters)
+ament_target_dependencies(mecanum_drive_controller PUBLIC
 ${THIS_PACKAGE_INCLUDE_DEPENDS})
 
 target_include_directories(mecanum_drive_controller SYSTEM PUBLIC
@@ -80,10 +65,6 @@ target_include_directories(mecanum_drive_controller SYSTEM PUBLIC
     ${nav_msgs_INCLUDE_DIRS}
     ${rclcpp_INCLUDE_DIRS})
 
-#target_link_libraries(mecanum_drive_controller
-#    mecanum_drive_controller_parameters
-#    )
-
 target_compile_definitions(mecanum_drive_controller PRIVATE "MECANUM_DRIVE_CONTROLLER_BUILDING_DLL")
 #pluginlib_export_plugin_description_file(controller_interface mecanum_drive_controller_plugins.xml)
 
@@ -93,10 +74,10 @@ install(FILES mecanum_drive_controller_plugins.xml
 install(DIRECTORY config launch
   DESTINATION share/${PROJECT_NAME})
 
-install(DIRECTORY include/
+install(DIRECTORY include/mecanum_drive_controller
   DESTINATION include/mecanum_drive_controller)
 
-install(TARGETS mecanum_drive_controller
+install(TARGETS mecanum_drive_controller mecanum_drive_controller_parameters
 #  EXPORT export_mecanum_drive_controller
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib

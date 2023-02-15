@@ -46,8 +46,8 @@
 #include <vector>
 #include <queue>
 
-#include <geometry_msgs/msg/twist.h>
-#include <geometry_msgs/msg/twist_stamped.h>
+#include <geometry_msgs/msg/twist.hpp>
+#include <geometry_msgs/msg/twist_stamped.hpp>
 #include <hardware_interface/handle.hpp>
 #include <hardware_interface/hardware_info.hpp>
 #include <nav_msgs/msg/odometry.hpp>
@@ -57,7 +57,7 @@
 #include <realtime_tools/realtime_buffer.h>
 #include <realtime_tools/realtime_publisher.h>
 
-//#include "mecanum_drive_controller_parameters.h"
+#include "mecanum_drive_controller_parameters.hpp"
 #include <controller_interface/controller_interface.hpp>
 #include <hardware_interface/handle.hpp>
 #include <mecanum_drive_controller/odometry.h>
@@ -70,10 +70,7 @@
 #include <realtime_tools/realtime_buffer.h>
 #include <realtime_tools/realtime_publisher.h>
 
-#include "mecanum_drive_controller_parameters.h"
-
-namespace mecanum_drive_controller
-{
+namespace mecanum_drive_controller {
 
 /**
  * This class makes some assumptions on the model of the robot:
@@ -84,8 +81,6 @@ namespace mecanum_drive_controller
  *  - a wheel collision geometry is a cylinder in the urdf
  *  - a wheel joint frame center's vertical projection on the floor must lie within the contact patch
  */
-using Twist = geometry_msgs::msg::TwistStamped;
-
 class MecanumDriveController : public controller_interface::ControllerInterface
 {
 public:
@@ -102,7 +97,7 @@ public:
    * \brief Configures controller, partially replaces init(), replaces setupRtPublishersMsg & cmdVelCallback, and calls setWheelParamsFromUrdf
    */
     MECANUM_DRIVE_CONTROLLER_PUBLIC
-    controller_interface::CallbackReturn on_configure(
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_configure(
         const rclcpp_lifecycle::State &previous_state) override;
 
     /**
@@ -113,35 +108,36 @@ public:
    */
     MECANUM_DRIVE_CONTROLLER_PUBLIC
     controller_interface::return_type update(const rclcpp::Time &time,
-                                             const rclcpp::Duration &period) override;
+                                             const rclcpp::Duration &period) const override;
 
     /**
    * \brief Initialize controller, partially replaces init()
    */
     MECANUM_DRIVE_CONTROLLER_PUBLIC
-    controller_interface::CallbackReturn on_init() override;
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_init()
+        const override;
 
     //    /**
     //   * \brief Stops controller, this replaces stopping()
     //   */
     MECANUM_DRIVE_CONTROLLER_PUBLIC
-    controller_interface::CallbackReturn on_shutdown(
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_shutdown(
         const rclcpp_lifecycle::State &previous_state) override;
 
     MECANUM_DRIVE_CONTROLLER_PUBLIC
-    controller_interface::CallbackReturn on_activate(
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_activate(
         const rclcpp_lifecycle::State &previous_state) override;
 
     MECANUM_DRIVE_CONTROLLER_PUBLIC
-    controller_interface::CallbackReturn on_deactivate(
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_deactivate(
         const rclcpp_lifecycle::State &previous_state) override;
 
     MECANUM_DRIVE_CONTROLLER_PUBLIC
-    controller_interface::CallbackReturn on_cleanup(
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_cleanup(
         const rclcpp_lifecycle::State &previous_state) override;
 
     MECANUM_DRIVE_CONTROLLER_PUBLIC
-    controller_interface::CallbackReturn on_error(
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn on_error(
         const rclcpp_lifecycle::State &previous_state) override;
 
     //    /**
@@ -151,7 +147,7 @@ public:
     void starting(const rclcpp::Time &time);
 
 protected:
-    std::shared_ptr<ParamListener> param_listener_;
+    std::shared_ptr<mecanum_drive_controller::ParamListener> param_listener_;
     Params params_;
 
     // these are replacing wheel0_jointHandle_; & so forth
@@ -162,7 +158,7 @@ protected:
     };
 
     const char *feedback_type() const;
-    controller_interface::CallbackReturn configure_wheel_handles(
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn configure_wheel_handles(
         const std::vector<std::string> &wheel_names, std::vector<WheelHandle> &registered_handles);
 
     std::vector<WheelHandle> wheel_handle_;
@@ -180,24 +176,27 @@ protected:
         realtime_odometry_transform_publisher_ = nullptr;
 
     bool subscriber_is_active_ = false;
-    rclcpp::Subscription<Twist>::SharedPtr velocity_command_subscriber_ = nullptr;
+    rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr velocity_command_subscriber_
+        = nullptr;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocity_command_unstamped_subscriber_
         = nullptr;
 
-    realtime_tools::RealtimeBox<std::shared_ptr<Twist>> received_velocity_msg_ptr_{nullptr};
+    realtime_tools::RealtimeBox<std::shared_ptr<geometry_msgs::msg::TwistStamped>>
+        received_velocity_msg_ptr_{nullptr};
 
-    std::queue<Twist> previous_commands_; // last two commands
+    std::queue<geometry_msgs::msg::TwistStamped> previous_commands_; // last two commands
 
     bool publish_limited_velocity_ = false;
-    std::shared_ptr<rclcpp::Publisher<Twist>> limited_velocity_publisher_ = nullptr;
-    std::shared_ptr<realtime_tools::RealtimePublisher<Twist>> realtime_limited_velocity_publisher_
+    std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::TwistStamped>> limited_velocity_publisher_
         = nullptr;
+    std::shared_ptr<realtime_tools::RealtimePublisher<geometry_msgs::msg::TwistStamped>>
+        realtime_limited_velocity_publisher_ = nullptr;
 
     rclcpp::Time previous_update_timestamp_{0};
 
     // publish rate limiter
     double publish_rate_ = 50.0;
-    rclcpp::Duration publish_period_ = rclcpp::Duration::from_nanoseconds(0);
+    rclcpp::Duration publish_period_ = rclcpp::Duration::from_seconds(0);
     rclcpp::Time previous_publish_timestamp_{0};
 
     bool reset();
@@ -208,27 +207,21 @@ private:
     std::string filename_;
 
     /// Odometry related:
-    double publish_rate_ = 50.0;
     rclcpp::Time last_state_publish_time_;
 
     bool open_loop_;
-    bool is_halted_ = false;
+    bool is_halted = false;
     bool use_stamped_vel_ = true;
-
-    bool reset();
 
     /// Odometry related:
     Odometry odometry_;
-    geometry_msgs::TransformStamped odom_frame_;
+    geometry_msgs::msg::TransformStamped odom_frame_;
 
     /// Wheel radius (assuming it's the same for the left and right wheels):
     double wheels_k; // wheels geometric param used in mecanum wheels' ik
-    double wheels_radius;
+    double wheel_radius;
     double wheel_separation_x;
     double wheel_separation_y;
-
-    /// Timeout to consider cmd_vel commands old:
-    double cmd_vel_timeout_; // might need to move to  std::chrono::milliseconds cmd_vel_timeout_{500};
 
     /// Frame to use for the robot base:
     std::string base_frame_id_;
@@ -256,7 +249,8 @@ private:
        * \param wheel2_name Name of wheel2 joint
        * \param wheel3_name Name of wheel3 joint
        */
-    controller_interface::CallbackReturn setWheelParamsFromUrdf(const rclcpp_lifecycle::State &);
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn setWheelParamsFromUrdf(
+        const rclcpp_lifecycle::State &);
 
     /**
        * \brief Get the radius of a given wheel

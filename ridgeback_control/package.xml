@@ -19,7 +19,7 @@
   <depend>rcpputils</depend>
   <depend>controller_interface</depend>
   <depend>geometry_msgs</depend>
-<!--  <depend>generate_parameter_library</depend>-->
+  <depend>generate_parameter_library</depend>
   <depend>hardware_interface</depend>
   <depend>controller_manager</depend>
   <depend>realtime_tools</depend>
