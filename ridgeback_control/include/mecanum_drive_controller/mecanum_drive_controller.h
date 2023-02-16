@@ -224,7 +224,7 @@ private:
 
     urdf::JointConstSharedPtr urdfJoint_wheel_index;
 
-    const str wheel_name_index;
+    std::string wheel_name_index;
     double wheel_radius0;
 
     double wheel_x0;
@@ -283,8 +283,8 @@ private:
        * \param       wheel_link    link of the wheel from which to get the radius
        * \param[out]  wheels_radius radius of the wheel read from the urdf
        */
-    double wheel_radius getWheelRadius(const urdf::ModelInterfaceSharedPtr model,
-                                       const urdf::LinkConstSharedPtr &wheel_link);
+    double getWheelRadius(const urdf::ModelInterfaceSharedPtr model,
+                          const urdf::LinkConstSharedPtr &wheel_link);
 };
 //PLUGINLIB_EXPORT_CLASS(mecanum_drive_controller::MecanumDriveController, controller_interface::ControllerBase)
 } // namespace mecanum_drive_controller

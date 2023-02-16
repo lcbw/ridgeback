@@ -50,6 +50,7 @@
 #include <rclcpp/logging.hpp>
 #include <rclcpp/qos.hpp>
 #include <rclcpp_lifecycle/state.hpp>
+#include <urdf/model.h>
 #include <urdf_parser/urdf_parser.h>
 
 #include <boost/assign.hpp>
@@ -134,7 +135,7 @@ controller_interface::return_type MecanumDriveController::init(const std::string
         params_ = param_listener_->get_params();
     } catch (const std::exception &e) {
         fprintf(stderr, "Exception thrown during init stage with message: %s \n", e.what());
-        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
+        return controller_interface::return_type::ERROR;
     }
 
     return controller_interface::return_type::OK;
@@ -211,7 +212,7 @@ controller_interface::return_type MecanumDriveController::update()
                                  command.twist.angular.z,
                                  current_time);
     } else {
-        double[] feedback = [0.0, 0.0, 0.0, 0.0];
+        double feedback[4] = {0.0, 0.0, 0.0, 0.0};
         for (size_t index = 0; index < 4; ++index) {
             feedback[index] = wheel_handle_[index].feedback.get().get_value();
             if (std::isnan(feedback[index])) {
@@ -236,8 +237,10 @@ controller_interface::return_type MecanumDriveController::update()
             odometry_message.header.stamp = current_time;
             odometry_message.pose.pose.position.x = odometry_.getX();
             odometry_message.pose.pose.position.y = odometry_.getY();
-            odometry_message.pose.pose.orientation
-                = orientation; // unless it bitches out and wants the 4 part
+            odometry_message.pose.pose.orientation.x = orientation.x();
+            odometry_message.pose.pose.orientation.y = orientation.y();
+            odometry_message.pose.pose.orientation.z = orientation.z();
+            odometry_message.pose.pose.orientation.w = orientation.w();
             odometry_message.twist.twist.linear.x = odometry_.getLinearX();
             odometry_message.twist.twist.linear.y = odometry_.getLinearY();
             odometry_message.twist.twist.angular.z = odometry_.getAngular();
@@ -249,7 +252,10 @@ controller_interface::return_type MecanumDriveController::update()
             transform.header.stamp = current_time;
             transform.transform.translation.x = odometry_.getX();
             transform.transform.translation.y = odometry_.getY();
-            transform.transform.rotation = orientation; // unless it bitches out and wants the 4 part
+            transform.transform.rotation.x = orientation.x();
+            transform.transform.rotation.y = orientation.y();
+            transform.transform.rotation.z = orientation.z();
+            transform.transform.rotation.w = orientation.w();
             realtime_odometry_transform_publisher_->unlockAndPublish();
         }
     }
@@ -276,12 +282,11 @@ controller_interface::return_type MecanumDriveController::update()
 
     // Compute wheels velocities (this is the actual ik):
     // NOTE: the input desired twist (from topic /cmd_vel) is a body twist.
-    double[] wheel_velocity = [
-        1.0 / wheel_radius * (linear_command_x - linear_command_y - wheels_k * angular_command),
-        1.0 / wheel_radius * (linear_command_x + linear_command_y - wheels_k * angular_command),
-        1.0 / wheel_radius * (linear_command_x - linear_command_y + wheels_k * angular_command),
-        1.0 / wheel_radius * (linear_command_x + linear_command_y + wheels_k * angular_command)
-    ];
+    double wheel_velocity[4]
+        = {1.0 / wheel_radius * (linear_command_x - linear_command_y - wheels_k * angular_command),
+           1.0 / wheel_radius * (linear_command_x + linear_command_y - wheels_k * angular_command),
+           1.0 / wheel_radius * (linear_command_x - linear_command_y + wheels_k * angular_command),
+           1.0 / wheel_radius * (linear_command_x + linear_command_y + wheels_k * angular_command)};
     // Set wheels velocities:
     for (size_t index = 0; index < 4; ++index) {
         wheel_handle_[index].velocity.get().set_value(wheel_velocity[index]);
@@ -632,21 +637,21 @@ MecanumDriveController::setWheelParamsFromUrdf(const rclcpp_lifecycle::State &)
     bool lookup_wheel_radius = (params_.wheel_radius > 0.0);
 
     // Avoid URDF requirement if wheel separation and radius already specified
-    urdf::ModelInterfaceSharedPtr model(urdf::Model::initFile(filename_));
+    urdf::ModelInterfaceSharedPtr model = urdf::Model::initFile(filename_);
 
     if (lookup_wheel_separation || lookup_wheel_radius) {
-        double[] wheel_x = [0.0, 0.0, 0.0, 0.0];
-        double[] wheel_y = [0.0, 0.0, 0.0, 0.0];
+        double wheel_x[4] = {0.0, 0.0, 0.0, 0.0};
+        double wheel_y[4] = {0.0, 0.0, 0.0, 0.0};
 
         for (size_t index = 0; index < 4; ++index) {
-            const str wheel_name_index = params_.wheel_names[index];
+            std::string wheel_name_index = params_.wheel_names[index];
             // Get wheels position and compute parameter k_ (used in mecanum wheels IK).
-            urdf::JointConstSharedPtr urdfJoint_wheel_index model->getJoint(wheel_name_index);
+            urdf::JointConstSharedPtr urdfJoint_wheel_index = model->getJoint(wheel_name_index);
             if (!urdfJoint_wheel_index) {
                 RCLCPP_ERROR(logger,
                              "%s couldn't be retrieved from model description",
                              wheel_name_index);
-                return false;
+                return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
             }
             if (lookup_wheel_separation) {
                 RCLCPP_INFO(logger,
@@ -656,10 +661,8 @@ MecanumDriveController::setWheelParamsFromUrdf(const rclcpp_lifecycle::State &)
                             urdfJoint_wheel_index->parent_to_joint_origin_transform.position.y,
                             urdfJoint_wheel_index->parent_to_joint_origin_transform.position.z);
             }
-            double wheel_x[index] = urdfJoint_wheel_index->parent_to_joint_origin_transform.position
-                                        .x;
-            double wheel_y[index] = urdfJoint_wheel_index->parent_to_joint_origin_transform.position
-                                        .y;
+            wheel_x[index] = urdfJoint_wheel_index->parent_to_joint_origin_transform.position.x;
+            wheel_y[index] = urdfJoint_wheel_index->parent_to_joint_origin_transform.position.y;
         }
         wheels_k = (-(-wheel_x[0] - wheel_y[0]) - (wheel_x[1] - wheel_y[1])
                     + (-wheel_x[2] - wheel_y[2]) + (wheel_x[3] - wheel_y[3]))
@@ -674,10 +677,12 @@ MecanumDriveController::setWheelParamsFromUrdf(const rclcpp_lifecycle::State &)
 
     if (lookup_wheel_radius) {
         // Get wheels radius
-        double[] wheel_radius = [0.0, 0.0, 0.0, 0.0];
+        double wheel_radius[4] = {0.0, 0.0, 0.0, 0.0};
         for (size_t index = 0; index < 4; ++index) {
-            if (!getWheelRadius(model, model->getLink(urdfJoint_wheel[index]->child_link_name))) {
-                RCLCPP_ERROR(logger, "Couldn't retrieve wheels %s's radius", wheel_radius_index);
+            std::string wheel_name_index = params_.wheel_names[index];
+            urdf::JointConstSharedPtr urdfJoint_wheel_index = model->getJoint(wheel_name_index);
+            if (!getWheelRadius(model, model->getLink(urdfJoint_wheel_index->child_link_name))) {
+                RCLCPP_ERROR(logger, "Couldn't retrieve wheels %i's radius", index);
                 return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
             }
         }
@@ -702,14 +707,14 @@ MecanumDriveController::setWheelParamsFromUrdf(const rclcpp_lifecycle::State &)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // THIS JUST ASSUMES THAT URDF JUST WORKS THE SAME :D YEAH RIGHT AHAHAHAHA!! //
 
-double wheel_radius MecanumDriveController::getWheelRadius(
-    const urdf::ModelInterfaceSharedPtr model, const urdf::LinkConstSharedPtr &wheel_link)
+double MecanumDriveController::getWheelRadius(const urdf::ModelInterfaceSharedPtr model,
+                                              const urdf::LinkConstSharedPtr &wheel_link)
 {
     rclcpp::Logger logger = get_node()->get_logger();
     urdf::LinkConstSharedPtr radius_link = wheel_link;
     if (!isCylinderOrSphere(radius_link)) {
         RCLCPP_ERROR(logger, "Wheel link %d is NOT modeled as a cylinder!", radius_link->name);
-        return false;
+        throw std::exception;
     }
 
     if (radius_link->collision->geometry->type == urdf::Geometry::CYLINDER)
