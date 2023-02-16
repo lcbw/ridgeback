@@ -202,9 +202,9 @@ public:
 
   /// Rolling mean accumulators for the linar and angular velocities:
   size_t velocity_rolling_window_size_;
-  RollingMeanAcc linearX_acc_;
-  RollingMeanAcc linearY_acc_;
-  RollingMeanAcc angular_acc_;
+  RollingMeanAccumulator linearX_acc_;
+  RollingMeanAccumulator linearY_acc_;
+  RollingMeanAccumulator angular_acc_;
 
   void resetAccumulators();
   /// Integration funcion, used to integrate the odometry:
