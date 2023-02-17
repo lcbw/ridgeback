@@ -84,6 +84,52 @@ install(TARGETS mecanum_drive_controller mecanum_drive_controller_parameters
   RUNTIME DESTINATION bin
   INCLUDES DESTINATION include)
 
+if(BUILD_TESTING)
+  find_package(ament_cmake_gmock REQUIRED)
+  find_package(controller_manager REQUIRED)
+  find_package(ridgeback_description REQUIRED)
+
+  ament_add_gmock(test_mecanum_drive_controller
+    test/test_mecanum_drive_controller.cpp
+    ENV config_file=${CMAKE_CURRENT_SOURCE_DIR}/test/config/test_mecanum_drive_controller.yaml)
+  target_include_directories(test_mecanum_drive_controller PRIVATE include)
+  target_link_libraries(test_mecanum_drive_controller
+    mecanum_drive_controller
+  )
+
+  ament_target_dependencies(test_mecanum_drive_controller
+    ridgeback_description
+    geometry_msgs
+    hardware_interface
+    nav_msgs
+    rclcpp
+    rclcpp_lifecycle
+    realtime_tools
+    tf2
+    tf2_msgs
+  )
+
+  ament_add_gmock(
+    test_load_mecanum_drive_controller
+    test/test_load_mecanum_drive_controller.cpp
+  )
+  target_include_directories(test_load_mecanum_drive_controller PRIVATE include)
+  ament_target_dependencies(test_load_mecanum_drive_controller
+    controller_manager
+  )
+  target_compile_definitions(test_load_mecanum_drive_controller PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")
+
+  ament_add_gmock(
+    test_accumulator
+    test/test_accumulator.cpp
+  )
+
+  target_include_directories(test_accumulator PRIVATE include)
+  ament_target_dependencies(test_accumulator)
+
+endif()
+
+
 #ament_export_targets(export_mecanum_drive_controller HAS_LIBRARY_TARGET)
 ament_export_dependencies(controller_interface realtime_tools hardware_interface) ## transitive dependencies - you shouldn't need to findpackage these libararies yourself if you're just using *this, here*
 #ament_export_include_directories(include) ## what other packages need when linking against this library (headers)

@@ -29,8 +29,8 @@
   <depend>tf2_msgs</depend>
   <depend>urdf</depend>
   <depend>rclcpp_lifecycle</depend>
-
   <depend>pluginlib</depend>
+  <depend>ridgeback_description</depend>
 
 <exec_depend>builtin_interfaces</exec_depend>
   <exec_depend>interactive_marker_twist_server</exec_depend>
