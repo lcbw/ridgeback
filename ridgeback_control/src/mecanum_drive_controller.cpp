@@ -50,8 +50,6 @@
 #include <rclcpp/logging.hpp>
 #include <rclcpp/qos.hpp>
 #include <rclcpp_lifecycle/state.hpp>
-#include <urdf/model.h>
-#include <urdf_parser/urdf_parser.h>
 
 #include <boost/assign.hpp>
 #include <eigen3/Eigen/Geometry>
@@ -172,7 +170,7 @@ controller_interface::return_type MecanumDriveController::update()
 
     if (get_current_state().id() == State::PRIMARY_STATE_INACTIVE) {
         if (!is_halted) {
-            halt();
+            brake();
             is_halted = true;
         }
         return controller_interface::return_type::OK;

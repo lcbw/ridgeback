@@ -87,8 +87,6 @@ install(TARGETS mecanum_drive_controller mecanum_drive_controller_parameters
 if(BUILD_TESTING)
   find_package(ament_cmake_gmock REQUIRED)
   find_package(controller_manager REQUIRED)
-  find_package(ridgeback_description REQUIRED)
-
   ament_add_gmock(test_mecanum_drive_controller
     test/test_mecanum_drive_controller.cpp
     ENV config_file=${CMAKE_CURRENT_SOURCE_DIR}/test/config/test_mecanum_drive_controller.yaml)
@@ -98,7 +96,6 @@ if(BUILD_TESTING)
   )
 
   ament_target_dependencies(test_mecanum_drive_controller
-    ridgeback_description
     geometry_msgs
     hardware_interface
     nav_msgs

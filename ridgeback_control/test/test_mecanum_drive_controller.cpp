@@ -25,10 +25,9 @@
 #include "hardware_interface/loaned_state_interface.hpp"
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
 #include "lifecycle_msgs/msg/state.hpp"
-#include "mecanum_drive_controller/mecanum_drive_controller.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include <mecanum_drive_controller/mecanum_drive_controller.h>
 
-using CallbackReturn = mecanum_drive_controller::CallbackReturn;
 using hardware_interface::HW_IF_POSITION;
 using hardware_interface::HW_IF_VELOCITY;
 using hardware_interface::LoanedCommandInterface;
@@ -167,7 +166,8 @@ TEST_F(TestMecanumDriveController, configure_fails_without_parameters)
     const auto ret = controller_->init(controller_name);
     ASSERT_EQ(ret, controller_interface::return_type::OK);
 
-    ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()), CallbackReturn::ERROR);
+    ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()),
+              rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR);
 }
 
 TEST_F(TestMecanumDriveController, configure_fails_with_only_left_or_only_right_side_defined)
@@ -180,14 +180,16 @@ TEST_F(TestMecanumDriveController, configure_fails_with_only_left_or_only_right_
     controller_->get_node()->set_parameter(
         rclcpp::Parameter("right_wheel_names", rclcpp::ParameterValue(std::vector<std::string>())));
 
-    ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()), CallbackReturn::ERROR);
+    ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()),
+              rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR);
 
     controller_->get_node()->set_parameter(
         rclcpp::Parameter("left_wheel_names", rclcpp::ParameterValue(std::vector<std::string>())));
     controller_->get_node()->set_parameter(
         rclcpp::Parameter("right_wheel_names", rclcpp::ParameterValue(right_wheel_names)));
 
-    ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()), CallbackReturn::ERROR);
+    ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()),
+              rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR);
 }
 
 TEST_F(TestMecanumDriveController, configure_fails_with_mismatching_wheel_side_size)
@@ -203,7 +205,8 @@ TEST_F(TestMecanumDriveController, configure_fails_with_mismatching_wheel_side_s
     controller_->get_node()->set_parameter(
         rclcpp::Parameter("right_wheel_names", rclcpp::ParameterValue(extended_right_wheel_names)));
 
-    ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()), CallbackReturn::ERROR);
+    ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()),
+              rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR);
 }
 
 TEST_F(TestMecanumDriveController, configure_succeeds_when_wheels_are_specified)
@@ -216,7 +219,8 @@ TEST_F(TestMecanumDriveController, configure_succeeds_when_wheels_are_specified)
     controller_->get_node()->set_parameter(
         rclcpp::Parameter("right_wheel_names", rclcpp::ParameterValue(right_wheel_names)));
 
-    ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()), CallbackReturn::SUCCESS);
+    ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()),
+              rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
 
     ASSERT_THAT(controller_->state_interface_configuration().names,
                 SizeIs(left_wheel_names.size() + right_wheel_names.size()));
@@ -234,8 +238,10 @@ TEST_F(TestMecanumDriveController, activate_fails_without_resources_assigned)
     controller_->get_node()->set_parameter(
         rclcpp::Parameter("right_wheel_names", rclcpp::ParameterValue(right_wheel_names)));
 
-    ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()), CallbackReturn::SUCCESS);
-    ASSERT_EQ(controller_->on_activate(rclcpp_lifecycle::State()), CallbackReturn::ERROR);
+    ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()),
+              rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
+    ASSERT_EQ(controller_->on_activate(rclcpp_lifecycle::State()),
+              rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR);
 }
 
 TEST_F(TestMecanumDriveController, activate_succeeds_with_resources_assigned)
@@ -248,9 +254,11 @@ TEST_F(TestMecanumDriveController, activate_succeeds_with_resources_assigned)
     controller_->get_node()->set_parameter(
         rclcpp::Parameter("right_wheel_names", rclcpp::ParameterValue(right_wheel_names)));
 
-    ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()), CallbackReturn::SUCCESS);
+    ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()),
+              rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
     assignResources();
-    ASSERT_EQ(controller_->on_activate(rclcpp_lifecycle::State()), CallbackReturn::SUCCESS);
+    ASSERT_EQ(controller_->on_activate(rclcpp_lifecycle::State()),
+              rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
 }
 
 TEST_F(TestMecanumDriveController, cleanup)

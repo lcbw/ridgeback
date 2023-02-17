@@ -32,3 +32,4 @@ install(PROGRAMS scripts/env_run
 #  find_package(roslaunch REQUIRED)
 #  roslaunch_add_file_check(launch/description.launch)
 #endif()
+ament_package()

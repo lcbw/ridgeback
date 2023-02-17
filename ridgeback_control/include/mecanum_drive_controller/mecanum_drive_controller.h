@@ -53,6 +53,8 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <pluginlib/class_list_macros.h>
 #include <tf2_msgs/msg/tf_message.hpp>
+#include <urdf/model.h>
+#include <urdf_parser/urdf_parser.h>
 
 #include <realtime_tools/realtime_buffer.h>
 #include <realtime_tools/realtime_publisher.h>
@@ -199,7 +201,6 @@ protected:
     rclcpp::Time previous_publish_timestamp_{0};
 
     bool reset();
-    void halt();
 
 private:
     std::string name_;
@@ -264,7 +265,7 @@ private:
     /**
        * \brief Brakes the wheels, i.e. sets the velocity to 0
        */
-    void brake(); //  void halt();
+    void brake(); //  this replaces void halt(); which is expected for ros2_controller exemplars
 
     /**
        * \brief Sets odometry parameters from the URDF, i.e. the wheel radius and separation
