@@ -199,7 +199,7 @@ controller_interface::return_type MecanumDriveController::update()
 
     // command may be limited further by SpeedLimit,
     // without affecting the stored twist command
-    <geometry_msgs::msg::TwistStamped> command = *last_command_msg;
+    geometry_msgs::msg::TwistStamped command = *last_command_msg;
     double &linear_command_x = command.twist.linear.x;
     double &linear_command_y = command.twist.linear.y;
     double &angular_command = command.twist.angular.z;
@@ -361,15 +361,15 @@ MecanumDriveController::on_configure(const rclcpp_lifecycle::State &state)
             = get_node()->create_subscription<geometry_msgs::msg::TwistStamped>(
                 DEFAULT_COMMAND_TOPIC,
                 rclcpp::SystemDefaultsQoS(),
-                [this](const std::shared_ptr<geometry_msgs::msg::TwistStamped> msg,
-                       rclcpp::Logger logger) -> void {
+                [this](const std::shared_ptr<geometry_msgs::msg::TwistStamped> msg) -> void {
                     if (!subscriber_is_active_) {
-                        RCLCPP_WARN(logger, "Can't accept new commands. subscriber is inactive");
+                        RCLCPP_WARN(get_node()->get_logger(),
+                                    "Can't accept new commands. subscriber is inactive");
                         return;
                     }
                     if ((msg->header.stamp.sec == 0) && (msg->header.stamp.nanosec == 0)) {
                         RCLCPP_WARN_ONCE(
-                            logger,
+                            get_node()->get_logger(),
                             "Received TwistStamped with zero timestamp, setting it to current "
                             "time, this message will only be shown once");
                         msg->header.stamp = get_node()->get_clock()->now();
@@ -381,10 +381,10 @@ MecanumDriveController::on_configure(const rclcpp_lifecycle::State &state)
             = get_node()->create_subscription<geometry_msgs::msg::Twist>(
                 DEFAULT_COMMAND_UNSTAMPED_TOPIC,
                 rclcpp::SystemDefaultsQoS(),
-                [this](const std::shared_ptr<geometry_msgs::msg::Twist> msg,
-                       rclcpp::Logger logger) -> void {
+                [this](const std::shared_ptr<geometry_msgs::msg::Twist> msg) -> void {
                     if (!subscriber_is_active_) {
-                        RCLCPP_WARN(logger, "Can't accept new commands. subscriber is inactive");
+                        RCLCPP_WARN(get_node()->get_logger(),
+                                    "Can't accept new commands. subscriber is inactive");
                         return;
                     }
 
@@ -634,8 +634,8 @@ MecanumDriveController::setWheelParamsFromUrdf(const rclcpp_lifecycle::State &)
     bool lookup_wheel_radius = (params_.wheel_radius > 0.0);
 
     // Avoid URDF requirement if wheel separation and radius already specified
-    urdf::ModelInterfaceSharedPtr model;
-    model.initFile(filename_);
+    urdf::ModelSharedPtr model = std::make_shared<urdf::Model>();
+    model->initFile(filename_);
 
     if (lookup_wheel_separation || lookup_wheel_radius) {
         double wheel_x[4] = {0.0, 0.0, 0.0, 0.0};
@@ -672,7 +672,6 @@ MecanumDriveController::setWheelParamsFromUrdf(const rclcpp_lifecycle::State &)
         // The seperation is the total distance between the wheels in X and Y.
         wheels_k = (wheel_separation_x + wheel_separation_y) / 2.0;
     }
-
     if (lookup_wheel_radius) {
         // Get wheels radius
         double wheel_radius[4] = {0.0, 0.0, 0.0, 0.0};
@@ -705,14 +704,14 @@ MecanumDriveController::setWheelParamsFromUrdf(const rclcpp_lifecycle::State &)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // THIS JUST ASSUMES THAT URDF JUST WORKS THE SAME :D YEAH RIGHT AHAHAHAHA!! //
 
-double MecanumDriveController::getWheelRadius(const urdf::ModelInterfaceSharedPtr model,
-                                              const urdf::LinkConstSharedPtr &wheel_link)
+bool MecanumDriveController::getWheelRadius(const urdf::ModelInterfaceSharedPtr model,
+                                            const urdf::LinkConstSharedPtr &wheel_link)
 {
     rclcpp::Logger logger = get_node()->get_logger();
     urdf::LinkConstSharedPtr radius_link = wheel_link;
     if (!isCylinderOrSphere(radius_link)) {
         RCLCPP_ERROR(logger, "Wheel link %d is NOT modeled as a cylinder!", radius_link->name);
-        throw std::exception Exception;
+        return false;
     }
 
     if (radius_link->collision->geometry->type == urdf::Geometry::CYLINDER)
@@ -721,7 +720,7 @@ double MecanumDriveController::getWheelRadius(const urdf::ModelInterfaceSharedPt
     else
         double wheel_radius = (static_cast<urdf::Sphere *>(radius_link->collision->geometry.get()))
                                   ->radius;
-    return wheel_radius;
+    return true;
 }
 } // namespace mecanum_drive_controller
 

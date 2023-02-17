@@ -258,7 +258,7 @@ private:
     SpeedLimiter limiter_linY_;
     SpeedLimiter limiter_ang_;
 
-    <geometry_msgs::msg::TwistStamped> command;
+    geometry_msgs::msg::TwistStamped command;
 
 private:
     /**
@@ -283,8 +283,8 @@ private:
        * \param       wheel_link    link of the wheel from which to get the radius
        * \param[out]  wheels_radius radius of the wheel read from the urdf
        */
-    double getWheelRadius(const urdf::ModelInterfaceSharedPtr model,
-                          const urdf::LinkConstSharedPtr &wheel_link);
+    bool getWheelRadius(const urdf::ModelInterfaceSharedPtr model,
+                        const urdf::LinkConstSharedPtr &wheel_link);
 };
 //PLUGINLIB_EXPORT_CLASS(mecanum_drive_controller::MecanumDriveController, controller_interface::ControllerBase)
 } // namespace mecanum_drive_controller

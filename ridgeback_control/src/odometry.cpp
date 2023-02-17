@@ -64,9 +64,9 @@ Odometry::Odometry(size_t velocity_rolling_window_size)
     , wheels_k_(0.0)
     , wheels_radius_(0.0)
     , velocity_rolling_window_size_(velocity_rolling_window_size)
-    , linearX_acc_(RollingWindow::window_size = velocity_rolling_window_size)
-    , linearY_acc_(RollingWindow::window_size = velocity_rolling_window_size)
-    , angular_acc_(RollingWindow::window_size = velocity_rolling_window_size)
+    , linearX_acc_(velocity_rolling_window_size)
+    , linearY_acc_(velocity_rolling_window_size)
+    , angular_acc_(velocity_rolling_window_size)
     , integrate_fun_(boost::bind(&Odometry::integrateExact, this, _1, _2, _3))
 {}
 
@@ -74,9 +74,9 @@ Odometry::Odometry(size_t velocity_rolling_window_size)
 void Odometry::init(const rclcpp::Time &time)
 {
     // Reset accumulators:
-    linearX_acc_ = RollingMeanAcc(RollingWindow::window_size = velocity_rolling_window_size_);
-    linearY_acc_ = RollingMeanAcc(RollingWindow::window_size = velocity_rolling_window_size_);
-    angular_acc_ = RollingMeanAcc(RollingWindow::window_size = velocity_rolling_window_size_);
+    linearX_acc_ = RollingMeanAccumulator(velocity_rolling_window_size_);
+    linearY_acc_ = RollingMeanAccumulator(velocity_rolling_window_size_);
+    angular_acc_ = RollingMeanAccumulator(velocity_rolling_window_size_);
 
     //    Reset accumulators and timestamp : resetAccumulators();
     // Reset timestamp:
@@ -150,11 +150,14 @@ void Odometry::integrateExact(double linearX, double linearY, double angular)
     //    Eigen::M
     //        unit matrix 3x3, rotation about z of the heading
     //            multiply 3x3 matrix by the vector as is
-    Eigen::Matrix3f R_m_odom = Eigen::MatrixXd::Identity(3, 3)
-                               * Eigen::Vector3f(0.0, 0.0, heading_);
+    Eigen::Matrix3f R_m_odom = Eigen::AngleAxisf(heading_, Eigen::Vector3f::UnitZ())
+                                   .toRotationMatrix();
     //    tf::Matrix3x3 R_m_odom = tf::Matrix3x3(tf::createQuaternionFromYaw(heading_));
     //    tf::Vector3 vel_inOdom = R_m_odom * tf::Vector3(linearX, linearY, 0.0);
-    Eigen::Vector3f vel_inOdom = R_m_odom * Eigen::Vector3f(linearX, linearY, 0.0);
+    Eigen::Vector3f vel_inOdom = R_m_odom
+                                 * Eigen::Vector3f(static_cast<float>(linearX),
+                                                   static_cast<float>(linearY),
+                                                   0.0f);
 
     /// Integrate linear velocity.
     x_ += vel_inOdom.x();

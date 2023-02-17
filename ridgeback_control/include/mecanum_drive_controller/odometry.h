@@ -174,7 +174,7 @@ public:
 
   /**
    * \brief Integrates the velocities (linear and angular) using exact method
-   * \param linearX  Linear velocity along X [m] (linear  displacement, i.e. m/s * dt) computed by encoders
+   * \param linearX Linear velocity along X [m] (linear  displacement, i.e. m/s * dt) computed by encoders
    * \param linearY  Linear velocity along Y [m] (linear  displacement, i.e. m/s * dt) computed by encoders
    * \param angular Angular velocity [rad] (angular displacement, i.e. m/s * dt) computed by encoders
    */
