@@ -61,7 +61,6 @@
 
 #include "mecanum_drive_controller_parameters.hpp"
 #include <controller_interface/controller_interface.hpp>
-#include <hardware_interface/handle.hpp>
 #include <mecanum_drive_controller/odometry.h>
 #include <mecanum_drive_controller/speed_limiter.h>
 #include <mecanum_drive_controller/visibility_control.h>

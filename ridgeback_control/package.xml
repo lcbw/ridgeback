@@ -31,7 +31,7 @@
   <depend>rclcpp_lifecycle</depend>
   <depend>pluginlib</depend>
 
-<exec_depend>builtin_interfaces</exec_depend>
+  <exec_depend>builtin_interfaces</exec_depend>
   <exec_depend>interactive_marker_twist_server</exec_depend>
   <exec_depend>joint_state_controller</exec_depend>
   <exec_depend>joy</exec_depend>
