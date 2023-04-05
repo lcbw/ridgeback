@@ -1,0 +1,30 @@
+GNU nano 4.8                              teleop.launch.xml
+<launch>
+  <arg name="joy_dev" default="$(env RIDGEBACK_JOY_DEVICE /dev/input/ps4)" />
+  <arg name="joystick" default="true" />
+
+  <group if="$(var joystick)">
+    <push-ros-namespace namespace="bluetooth_teleop"/>
+        <group unless="$(env RIDGEBACK_PS3 0)" >
+          <node pkg="joy" exec="joy_node" name="joy_node">
+            <param from="$(find-pkg-share ridgeback_control)/config/teleop_ps4.yaml" />
+            <param name="joy_node/dev" value="$(var joy_dev)" />
+          </node>
+        </group>
+
+        <group if="$(env RIDGEBACK_PS3 0)" >
+          <node pkg="joy" exec="joy_node" name="joy_node">
+            <param from="$(find-pkg-share ridgeback_control)/config/teleop_ps3.yaml" />
+          </node>
+        </group>
+    <node pkg="teleop_twist_joy" exec="teleop_node" name="teleop_twist_joy" />
+  </group>
+
+  <arg name="config" default="planar" />
+
+  <node pkg="interactive_marker_twist_server" exec="marker_server" name="twist_marker_server">
+    <param from="$(find-pkg-share interactive_marker_twist_server)/config/$(var config).yaml" />
+  </node>
+
+</launch>
+

@@ -1,5 +1,6 @@
 # Teleop configuration for PS4 joystick using the x-pad configuration.
 teleop_twist_joy:
+ros__parameters:
   axis_linear:
     x: 1
     y: 0
@@ -13,5 +14,7 @@ teleop_twist_joy:
   enable_button: 4
   enable_turbo_button: 5
 joy_node:
+ros__parameters:
   deadzone: 0.1
   autorepeat_rate: 20
+
