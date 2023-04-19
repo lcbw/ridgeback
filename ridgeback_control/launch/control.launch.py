@@ -18,7 +18,7 @@ def generate_launch_description():
   physical_robot = LaunchConfiguration('physical_robot')
   use_sim_time = LaunchConfiguration('use_sim_time')
 
-  robot_description_parameter = {"robot_description": Command(['xacro',' ', xacro_path, ' ', 'physical_robot:=', physical_robot])}
+  robot_description_parameter = {"robot_description": Command(['xacro',' ', xacro_path])}
 
   robot_localization_file_path = os.path.join(ridgeback_control_directory, 'config', 'ekf.yaml')
   # Declare the launch arguments

@@ -41,7 +41,7 @@
   <exec_depend>twist_mux</exec_depend>
 
   <export>
-    <controller_interface plugin="${prefix}/mecanum_drive_controller_plugins.xml"/>
+<!--    <controller_interface plugin="${prefix}/mecanum_drive_controller_plugins.xml"/>-->
     <build_type>ament_cmake</build_type>
   </export>
 </package>

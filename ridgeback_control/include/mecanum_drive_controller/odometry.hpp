@@ -39,10 +39,10 @@
  * Author: Paul Mathieu
  */
 
-#ifndef ODOMETRY_H_
-#define ODOMETRY_H_
+#ifndef MECANUM_DRIVE_CONTROLLER__ODOMETRY_HPP_
+#define MECANUM_DRIVE_CONTROLLER__ODOMETRY_HPP_
 
-#include "rolling_mean_accumulator.h"
+#include "rolling_mean_accumulator.hpp"
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/rolling_mean.hpp>
 #include <boost/accumulators/statistics/stats.hpp>
@@ -213,4 +213,4 @@ public:
 
 } // namespace mecanum_drive_controller
 
-#endif /* ODOMETRY_H_ */
+#endif /* MECANUM_DRIVE_CONTROLLER__ODOMETRY_HPP_ */

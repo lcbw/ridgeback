@@ -38,7 +38,7 @@
 
 #include <algorithm>
 
-#include <mecanum_drive_controller/speed_limiter.h>
+#include <mecanum_drive_controller/speed_limiter.hpp>
 
 template<typename T>
 T clamp(T x, T min, T max)

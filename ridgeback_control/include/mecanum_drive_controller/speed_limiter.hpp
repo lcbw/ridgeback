@@ -36,8 +36,8 @@
  * Author: Enrique Fernández
  */
 
-#ifndef SPEED_LIMITER_H
-#define SPEED_LIMITER_H
+#ifndef SPEED_LIMITER_HPP
+#define SPEED_LIMITER_HPP
 
 namespace mecanum_drive_controller
 {
@@ -102,4 +102,4 @@ namespace mecanum_drive_controller
 
 } // namespace mecanum_drive_controller
 
-#endif // SPEED_LIMITER_H
+#endif // SPEED_LIMITER_HPP

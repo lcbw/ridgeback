@@ -55,7 +55,7 @@
 #include <eigen3/Eigen/Geometry>
 #include <hardware_interface/types/hardware_interface_type_values.hpp>
 #include <lifecycle_msgs/msg/state.h>
-#include <mecanum_drive_controller/mecanum_drive_controller.h>
+#include <mecanum_drive_controller/mecanum_drive_controller.hpp>
 #include <tf2/LinearMath/Quaternion.h>
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -722,7 +722,11 @@ bool MecanumDriveController::getWheelRadius(const urdf::ModelInterfaceSharedPtr 
 }
 } // namespace mecanum_drive_controller
 
-#include "pluginlib/class_list_macros.hpp"
+#include "class_loader/register_macro.hpp"
 
-PLUGINLIB_EXPORT_CLASS(mecanum_drive_controller::MecanumDriveController,
-                       controller_interface::ControllerInterface)
+CLASS_LOADER_REGISTER_CLASS(mecanum_drive_controller::MecanumDriveController,
+                            controller_interface::ControllerInterface)
+//#include "pluginlib/class_list_macros.hpp"
+
+//PLUGINLIB_EXPORT_CLASS(mecanum_drive_controller::MecanumDriveController,
+//                       controller_interface::ControllerInterface)

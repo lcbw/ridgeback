@@ -61,9 +61,9 @@
 
 #include "mecanum_drive_controller_parameters.hpp"
 #include <controller_interface/controller_interface.hpp>
-#include <mecanum_drive_controller/odometry.h>
-#include <mecanum_drive_controller/speed_limiter.h>
-#include <mecanum_drive_controller/visibility_control.h>
+#include <mecanum_drive_controller/odometry.hpp>
+#include <mecanum_drive_controller/speed_limiter.hpp>
+#include <mecanum_drive_controller/visibility_control.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp>
 #include <rclcpp_lifecycle/state.hpp>
