@@ -1,7 +1,7 @@
 mecanum_drive_controller:
   wheel_names: {
     type: string_array,
-    default_value: [],
+    default_value: ["front_left_wheel","rear_left_wheel","front_right_wheel","rear_right_wheel"],
     description: "Link names of the wheels",
   }
   wheel_separation_x: {

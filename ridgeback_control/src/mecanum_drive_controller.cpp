@@ -54,6 +54,7 @@
 #include <boost/assign.hpp>
 #include <eigen3/Eigen/Geometry>
 #include <hardware_interface/types/hardware_interface_type_values.hpp>
+#include <iostream>
 #include <lifecycle_msgs/msg/state.h>
 #include <mecanum_drive_controller/mecanum_drive_controller.hpp>
 #include <tf2/LinearMath/Quaternion.h>
@@ -127,6 +128,10 @@ MecanumDriveController::MecanumDriveController()
 // BASICALLY PORTED* NOT TESTED!! //
 controller_interface::return_type MecanumDriveController::init(const std::string &controller_name)
 {
+    auto ret = ControllerInterface::init(controller_name);
+    if (ret != controller_interface::return_type::OK) {
+        return ret;
+    }
     try {
         // Create the parameter listener and get the parameters
         param_listener_ = std::make_shared<mecanum_drive_controller::ParamListener>(get_node());
@@ -641,6 +646,8 @@ MecanumDriveController::setWheelParamsFromUrdf(const rclcpp_lifecycle::State &)
 
         for (size_t index = 0; index < 4; ++index) {
             std::string wheel_name_index = params_.wheel_names[index];
+            RCLCPP_INFO(logger, "wheel name index: %s", wheel_name_index);
+
             // Get wheels position and compute parameter k_ (used in mecanum wheels IK).
             urdf::JointConstSharedPtr urdfJoint_wheel_index = model->getJoint(wheel_name_index);
             if (!urdfJoint_wheel_index) {

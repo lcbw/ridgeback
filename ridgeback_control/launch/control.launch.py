@@ -34,7 +34,6 @@ def generate_launch_description():
 
   # Specify the actions
   controller_manager_node = Node(
-    condition=IfCondition(physical_robot),
     package="controller_manager",
     executable="ros2_control_node",
     parameters=[robot_description_parameter, control_yaml],
@@ -44,17 +43,25 @@ def generate_launch_description():
     },
   )
 
-  spawn_dd_controller = Node(
-    package="controller_manager",
-    executable="spawner.py",
-    arguments=["ridgeback_velocity_controller"],
-    output="screen",
-  )
-
   spawn_jsb_controller = Node(
     package="controller_manager",
     executable="spawner.py",
     arguments=["ridgeback_joint_broadcaster"],
+    output="screen",
+  )
+
+  spawn_dd_controller = Node(
+    package="controller_manager",
+    executable="spawner.py",
+    arguments=["ridgeback_temp_controller"],
+    output="screen",
+  )
+
+
+  spawn_mech_controller = Node(
+    package="controller_manager",
+    executable="spawner.py",
+    arguments=["ridgeback_velocity_controller"],
     output="screen",
   )
 
@@ -65,6 +72,7 @@ def generate_launch_description():
     remappings={('/cmd_vel_out', '/ridgeback_velocity_controller/cmd_vel_unstamped')},
     parameters=[twist_mux_yaml, {'use_sim_time' : use_sim_time}]
   )
+
 
   # Start robot localization using an Extended Kalman filter
   start_robot_localization_cmd = Node(
@@ -82,6 +90,7 @@ def generate_launch_description():
   ld.add_action(declare_use_sim_time_cmd)
   ld.add_action(controller_manager_node)
   ld.add_action(spawn_dd_controller)
+  ld.add_action(spawn_mech_controller)
   ld.add_action(spawn_jsb_controller)
   ld.add_action(declare_twist_mux_node)
   ld.add_action(start_robot_localization_cmd)
