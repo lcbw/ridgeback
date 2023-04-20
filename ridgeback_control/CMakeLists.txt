@@ -33,6 +33,7 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
     tf2_msgs
     nav_msgs
     rcpputils
+    ament_index_cpp
 )
 
 find_package(ament_cmake REQUIRED)

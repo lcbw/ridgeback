@@ -64,6 +64,11 @@ mecanum_drive_controller:
     default_value: true,
     description: "Use stamp from input velocity message to calculate how old the command actually is.",
   }
+  publish_limited_velocity: {
+    type: bool,
+    default_value: false,
+    description: "Use stamp from input velocity message to calculate how old the command actually is.",
+  }
   publish_rate: {
     type: double,
     default_value: 50.0, # Hz

@@ -30,6 +30,7 @@
   <depend>urdf</depend>
   <depend>rclcpp_lifecycle</depend>
   <depend>pluginlib</depend>
+  <depend>ament_index_cpp</depend>
 
   <exec_depend>builtin_interfaces</exec_depend>
   <exec_depend>interactive_marker_twist_server</exec_depend>

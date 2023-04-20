@@ -15,8 +15,8 @@ controller_manager:
 
 ridgeback_velocity_controller:
   ros__parameters:
-    left_wheel_names: ["left_wheel"]
-    right_wheel_names: ["right_wheel"]
+    # left_wheel_names: ["left_wheel"]
+    # right_wheel_names: ["right_wheel"]
     wheel_names: ["front_left_wheel","rear_left_wheel","front_right_wheel","rear_right_wheel"]
     # front_left_wheel_joint: "front_left_wheel"
     # back_left_wheel_joint: "rear_left_wheel"
@@ -59,8 +59,8 @@ ridgeback_velocity_controller:
 
 ridgeback_temp_controller:
   ros__parameters:
-    left_wheel_names: ["left_wheels"]
-    right_wheel_names: ["right_wheels"]
+    left_wheel_names: ["front_left_wheel","rear_left_wheel"]
+    right_wheel_names: ["front_right_wheel","rear_right_wheel"]
     write_op_modes: ["motor_controller"]
 
     wheel_separation: 0.40

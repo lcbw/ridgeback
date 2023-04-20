@@ -51,6 +51,7 @@
 #include <rclcpp/qos.hpp>
 #include <rclcpp_lifecycle/state.hpp>
 
+#include <ament_index_cpp/get_package_share_directory.hpp>
 #include <boost/assign.hpp>
 #include <eigen3/Eigen/Geometry>
 #include <hardware_interface/types/hardware_interface_type_values.hpp>
@@ -136,6 +137,8 @@ controller_interface::return_type MecanumDriveController::init(const std::string
         // Create the parameter listener and get the parameters
         param_listener_ = std::make_shared<mecanum_drive_controller::ParamListener>(get_node());
         params_ = param_listener_->get_params();
+        filename_ = ament_index_cpp::get_package_share_directory("ridgeback_description")
+                    + "/urdf/ridgeback.urdf";
     } catch (const std::exception &e) {
         fprintf(stderr, "Exception thrown during init stage with message: %s \n", e.what());
         return controller_interface::return_type::ERROR;
@@ -163,7 +166,8 @@ controller_interface::InterfaceConfiguration MecanumDriveController::state_inter
 {
     std::vector<std::string> conf_names;
     for (const auto &joint_name : params_.wheel_names) {
-        conf_names.push_back(joint_name + "/");
+        conf_names.push_back(joint_name + "/" + HW_IF_POSITION);
+        conf_names.push_back(joint_name + "/" + HW_IF_VELOCITY);
     }
     return {interface_configuration_type::INDIVIDUAL, conf_names};
 }
@@ -231,6 +235,7 @@ controller_interface::return_type MecanumDriveController::update()
     tf2::Quaternion orientation;
     orientation.setRPY(0.0, 0.0, odometry_.getHeading());
 
+    // last_state_publish_time_ and current_time are coming up as just addresses
     if (last_state_publish_time_ + publish_period_ < current_time) {
         last_state_publish_time_ += publish_period_;
 
@@ -312,9 +317,10 @@ MecanumDriveController::on_configure(const rclcpp_lifecycle::State &state)
 
     // Set wheel params for the odometry computation // this is where wheel_k_ is calculated
     if (setWheelParamsFromUrdf(state)
-        != rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS)
+        != rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS) {
         RCLCPP_ERROR(logger, "Unable to set wheel parameters");
-    return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
+    }
 
     odometry_.setVelocityRollingWindowSize(params_.velocity_rolling_window_size);
 
@@ -646,20 +652,20 @@ MecanumDriveController::setWheelParamsFromUrdf(const rclcpp_lifecycle::State &)
 
         for (size_t index = 0; index < 4; ++index) {
             std::string wheel_name_index = params_.wheel_names[index];
-            RCLCPP_INFO(logger, "wheel name index: %s", wheel_name_index);
+            RCLCPP_INFO(logger, "wheel name index: %s", wheel_name_index.c_str());
 
             // Get wheels position and compute parameter k_ (used in mecanum wheels IK).
             urdf::JointConstSharedPtr urdfJoint_wheel_index = model->getJoint(wheel_name_index);
             if (!urdfJoint_wheel_index) {
                 RCLCPP_ERROR(logger,
                              "%s couldn't be retrieved from model description",
-                             wheel_name_index);
+                             wheel_name_index.c_str());
                 return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
             }
             if (lookup_wheel_separation) {
                 RCLCPP_INFO(logger,
                             "%s to origin: %d, %d, %d",
-                            wheel_name_index,
+                            wheel_name_index.c_str(),
                             urdfJoint_wheel_index->parent_to_joint_origin_transform.position.x,
                             urdfJoint_wheel_index->parent_to_joint_origin_transform.position.y,
                             urdfJoint_wheel_index->parent_to_joint_origin_transform.position.z);
@@ -692,7 +698,7 @@ MecanumDriveController::setWheelParamsFromUrdf(const rclcpp_lifecycle::State &)
         if (abs(wheel_radius[0] - wheel_radius[1]) > 1e-3
             || abs(wheel_radius[0] - wheel_radius[2]) > 1e-3
             || abs(wheel_radius[0] - wheel_radius[3]) > 1e-3) {
-            RCLCPP_ERROR(logger, "Wheels radius are not egual");
+            RCLCPP_ERROR(logger, "Wheels radius are not equal");
             return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
         }
     } else
