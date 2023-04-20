@@ -185,7 +185,7 @@ controller_interface::return_type MecanumDriveController::update()
         return controller_interface::return_type::OK;
     }
 
-    const auto current_time = node_->get_clock()->now();
+    const rclcpp::Time current_time = node_->get_clock()->now();
 
     std::shared_ptr<geometry_msgs::msg::TwistStamped> last_command_msg;
     received_velocity_msg_ptr_.get(last_command_msg);
@@ -196,6 +196,10 @@ controller_interface::return_type MecanumDriveController::update()
     }
 
     const auto age_of_last_command = current_time - last_command_msg->header.stamp;
+    //    rclcpp::Time this_time_stamp(last_command_msg->header.stamp.sec,
+    //                                 last_command_msg->header.stamp.nanosec,
+    //                                 RCL_ROS_TIME);
+    //    const auto age_of_last_command = current_time - this_time_stamp;
 
     // Brake if cmd_vel has timeout, override the stored command
     if (age_of_last_command > cmd_vel_timeout_) {

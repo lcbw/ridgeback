@@ -68,7 +68,7 @@ def generate_launch_description():
     package='twist_mux',
     executable='twist_mux',
     output='screen',
-    remappings={('/cmd_vel_out', '/ridgeback_temp_controller/cmd_vel_unstamped')},
+    remappings={('/cmd_vel_out', '/ridgeback_velocity_controller/cmd_vel_unstamped')},
     parameters=[twist_mux_yaml, {'use_sim_time' : use_sim_time}]
   )
 
@@ -88,8 +88,8 @@ def generate_launch_description():
   ld.add_action(declare_physical_robot_cmd)
   ld.add_action(declare_use_sim_time_cmd)
   ld.add_action(controller_manager_node)
-  ld.add_action(spawn_dd_controller)
-#  ld.add_action(spawn_mech_controller)
+#  ld.add_action(spawn_dd_controller)
+  ld.add_action(spawn_mech_controller)
   ld.add_action(spawn_jsb_controller)
   ld.add_action(declare_twist_mux_node)
   ld.add_action(start_robot_localization_cmd)
