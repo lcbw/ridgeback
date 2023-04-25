@@ -202,7 +202,7 @@ controller_interface::return_type MecanumDriveController::update()
     //    const auto age_of_last_command = current_time - this_time_stamp;
 
     // Brake if cmd_vel has timeout, override the stored command
-    if (age_of_last_command > cmd_vel_timeout_) {
+    if (age_of_last_command.seconds() > cmd_vel_timeout_.count()) {
         last_command_msg->twist.linear.x = 0.0;
         last_command_msg->twist.linear.y = 0.0;
         last_command_msg->twist.angular.z = 0.0;
@@ -240,8 +240,8 @@ controller_interface::return_type MecanumDriveController::update()
     orientation.setRPY(0.0, 0.0, odometry_.getHeading());
 
     // last_state_publish_time_ and current_time are coming up as just addresses
-    if (last_state_publish_time_ + publish_period_ < current_time) {
-        last_state_publish_time_ += publish_period_;
+    if (last_state_publish_time_.seconds() + publish_period_.seconds() < current_time.seconds()) {
+        last_state_publish_time_ += publish_period_; //.seconds();
 
         if (realtime_odometry_publisher_->trylock()) {
             // Populate odom message and publish
