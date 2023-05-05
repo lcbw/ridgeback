@@ -9,16 +9,18 @@ from ament_index_python.packages import get_package_share_directory
 
 
 def generate_launch_description():
-  dingo_control_directory = get_package_share_directory('dingo_control')
+  ridgeback_control_directory = get_package_share_directory('ridgeback_control')
 
-  teleop_yaml = os.path.join(dingo_control_directory, 'config', 'teleop_ps4.yaml')
+  teleop_yaml = os.path.join(ridgeback_control_directory, 'config', 'teleop_ps4.yaml')
 
-  joy_node_yaml = os.path.join(dingo_control_directory, 'config', 'joy_node.yaml')
+  joy_node_yaml = os.path.join(ridgeback_control_directory, 'config', 'joy_node.yaml')
 
   joystick = LaunchConfiguration('joystick')
   joy_dev = LaunchConfiguration('joy_dev')
 
-  configured_dev = os.getenv('DINGO_JOY_DEV', '/dev/input/js0')
+#  configured_dev = os.getenv('RIDGEBACK_JOY_DEV', '/dev/input/js0')
+  configured_dev = os.getenv('RIDGEBACK_JOY_DEV', '/dev/input/ps4')
+
 
   # Declare the launch arguments
   declare_joystick_cmd = DeclareLaunchArgument(

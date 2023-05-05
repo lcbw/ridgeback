@@ -6,7 +6,7 @@
  # scale_angular.yaw: 2.0
  # enable_button: 0
  # require_enable_button: False
-/twist_mux:
+twist_mux:
   ros__parameters:
     topics:
       joy:
