@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <robot name="ridgeback" xmlns:xacro="http://ros.org/wiki/xacro">
-  <xacro:arg name="use_fake_hardware" default="true"/>
+  <xacro:arg name="use_fake_hardware" default="false"/>
 
   <xacro:property name="PI" value="3.1415926535897931" />
 
@@ -314,8 +314,8 @@
         <plugin>fake_components/GenericSystem</plugin>
       </xacro:if>
       <xacro:unless value="$(arg use_fake_hardware)">
-        <param name="robot_ip">${robot_ip}</param>
-        <plugin>hardware_interface/VelocityJointInterface</plugin>
+<!--        <param name="robot_ip">${robot_ip}</param>-->
+        <plugin>ridgeback_base/RidgebackHardware</plugin> <!--hardware_interface/VelocityJointInterface -->
         <param name="gear_ratio">24</param>
         <param name="canbus_dev">can0</param>
         <param name="encoder_cpr">10</param>

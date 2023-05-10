@@ -54,10 +54,10 @@ def generate_launch_description():
      default_value='192.168.131.1',
      description='IP address for the ridgeback in XXX.XXX.XXX.XXX format')
 
-#  declare_control_yaml_file = DeclareLaunchArgument(
-#    'control_yaml_file',
-#    default_value=ridgeback_control_directory+'/config/control.yaml',
-#    description='The config file for gazebo_ros2_control, only needed in simulation')
+  declare_control_yaml_file = DeclareLaunchArgument(
+    'control_yaml_file',
+    default_value=ridgeback_control_directory+'/config/control.yaml',
+    description='The config file for gazebo_ros2_control, only needed in simulation')
 
 #  robot_description = Command([
 #    os.path.join(this_share_directory, 'env_run'),
@@ -67,7 +67,15 @@ def generate_launch_description():
 #    'xacro',' ', xacro_path, ' ', 'physical_robot:=', physical_robot, ' ', 'control_yaml_file:=', control_yaml_file
 #  ])
 
-  robot_description_parameter = {"robot_description": Command(['xacro',' ', xacro_path, ' ', 'physical_robot:=', physical_robot])}
+  robot_description = Command([
+    os.path.join(this_share_directory, 'env_run'),
+    ' ',
+    os.path.join(this_share_directory, 'urdf', 'configs', 'base'),
+    ' ',
+    'xacro',' ', xacro_path, ' ', 'physical_robot:=', physical_robot, ' ', 'control_yaml_file:=', control_yaml_file
+  ])
+
+#  robot_description_parameter = {"robot_description": Command(['xacro',' ', xacro_path, ' ', 'physical_robot:=', physical_robot, ' ', 'robot_ip:=',robot_ip])}
 
   # Specify the actions
   start_robot_state_publisher_cmd = Node(
@@ -77,7 +85,7 @@ def generate_launch_description():
     output='screen',
     parameters=[{
       'use_sim_time': use_sim_time,
-      'robot_description': robot_description_parameter
+      'robot_description': robot_description
     }]
   )
 
@@ -88,7 +96,7 @@ def generate_launch_description():
   ld.add_action(declare_config_cmd)
   ld.add_action(declare_physical_robot_cmd)
   ld.add_action(declare_robot_ip_cmd)
-#  ld.add_action(declare_control_yaml_file)
+  ld.add_action(declare_control_yaml_file)
 
   # Add any conditioned actions
   ld.add_action(start_robot_state_publisher_cmd)
