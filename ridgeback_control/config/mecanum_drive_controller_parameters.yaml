@@ -1,7 +1,7 @@
 mecanum_drive_controller:
   wheel_names: {
     type: string_array,
-    default_value: [],
+    default_value: ["front_left_wheel","rear_left_wheel","front_right_wheel","rear_right_wheel"],
     description: "Link names of the wheels",
   }
   wheel_separation_x: {
@@ -62,6 +62,11 @@ mecanum_drive_controller:
   use_stamped_vel: {
     type: bool,
     default_value: true,
+    description: "Use stamp from input velocity message to calculate how old the command actually is.",
+  }
+  publish_limited_velocity: {
+    type: bool,
+    default_value: false,
     description: "Use stamp from input velocity message to calculate how old the command actually is.",
   }
   publish_rate: {

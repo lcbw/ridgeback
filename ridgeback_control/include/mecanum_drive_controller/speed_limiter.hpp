@@ -36,63 +36,70 @@
  * Author: Enrique Fernández
  */
 
-#include <algorithm>
-
-#include <mecanum_drive_controller/speed_limiter.hpp>
-
-template<typename T>
-T clamp(T x, T min, T max)
-{
-  return std::min(std::max(min, x), max);
-}
+#ifndef SPEED_LIMITER_HPP
+#define SPEED_LIMITER_HPP
 
 namespace mecanum_drive_controller
 {
 
-  SpeedLimiter::SpeedLimiter(
-    bool has_velocity_limits,
-    bool has_acceleration_limits,
-    double min_velocity,
-    double max_velocity,
-    double min_acceleration,
-    double max_acceleration
-  )
-  : has_velocity_limits(has_velocity_limits),
-    has_acceleration_limits(has_acceleration_limits),
-    min_velocity(min_velocity),
-    max_velocity(max_velocity),
-    min_acceleration(min_acceleration),
-    max_acceleration(max_acceleration)
+  class SpeedLimiter
   {
-  }
+  public:
 
-  void SpeedLimiter::limit(double& v, double v0, double dt)
-  {
-    limit_velocity(v);
-    limit_acceleration(v, v0, dt);
-  }
+    /**
+     * \brief Constructor
+     * \param [in] has_velocity_limits     if true, applies velocity limits
+     * \param [in] has_acceleration_limits if true, applies acceleration limits
+     * \param [in] min_velocity Minimum velocity [m/s], usually <= 0
+     * \param [in] max_velocity Maximum velocity [m/s], usually >= 0
+     * \param [in] min_acceleration Minimum acceleration [m/s^2], usually <= 0
+     * \param [in] max_acceleration Maximum acceleration [m/s^2], usually >= 0
+     */
+    SpeedLimiter(
+      bool has_velocity_limits = false,
+      bool has_acceleration_limits = false,
+      double min_velocity = 0.0,
+      double max_velocity = 0.0,
+      double min_acceleration = 0.0,
+      double max_acceleration = 0.0
+    );
 
-  void SpeedLimiter::limit_velocity(double& v)
-  {
-    if (has_velocity_limits)
-    {
-      v = clamp(v, min_velocity, max_velocity);
-    }
-  }
+    /**
+     * \brief Limit the velocity and acceleration
+     * \param [in, out] v  Velocity [m/s]
+     * \param [in]      v0 Previous velocity [m/s]
+     * \param [in]      dt Time step [s]
+     */
+    void limit(double& v, double v0, double dt);
 
-  void SpeedLimiter::limit_acceleration(double& v, double v0, double dt)
-  {
-    if (has_acceleration_limits)
-    {
-      double dv = v - v0;
+    /**
+     * \brief Limit the velocity
+     * \param [in, out] v Velocity [m/s]
+     */
+    void limit_velocity(double& v);
 
-      const double dv_min = min_acceleration * dt;
-      const double dv_max = max_acceleration * dt;
+    /**
+     * \brief Limit the acceleration
+     * \param [in, out] v  Velocity [m/s]
+     * \param [in]      v0 Previous velocity [m/s]
+     * \param [in]      dt Time step [s]
+     */
+    void limit_acceleration(double& v, double v0, double dt);
 
-      dv = clamp(dv, dv_min, dv_max);
+  public:
+    // Enable/Disable velocity/acceleration limits:
+    bool has_velocity_limits;
+    bool has_acceleration_limits;
 
-      v = v0 + dv;
-    }
-  }
+    // Velocity limits:
+    double min_velocity;
+    double max_velocity;
+
+    // Acceleration limits:
+    double min_acceleration;
+    double max_acceleration;
+  };
 
 } // namespace mecanum_drive_controller
+
+#endif // SPEED_LIMITER_HPP

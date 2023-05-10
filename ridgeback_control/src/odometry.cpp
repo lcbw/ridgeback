@@ -39,7 +39,7 @@
  * Author: Paul Mathieu
  */
 
-#include <mecanum_drive_controller/odometry.h>
+#include <mecanum_drive_controller/odometry.hpp>
 
 //#include <tf/transform_datatypes.h>
 // we'll need to include tf2_msgs and tf2 seperately

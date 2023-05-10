@@ -33,6 +33,7 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
     tf2_msgs
     nav_msgs
     rcpputils
+    ament_index_cpp
 )
 
 find_package(ament_cmake REQUIRED)
@@ -53,22 +54,24 @@ add_library(mecanum_drive_controller SHARED
   src/speed_limiter.cpp)
 
 target_link_libraries(mecanum_drive_controller PUBLIC mecanum_drive_controller_parameters)
-ament_target_dependencies(mecanum_drive_controller PUBLIC
-${THIS_PACKAGE_INCLUDE_DEPENDS})
 
 target_include_directories(mecanum_drive_controller SYSTEM PUBLIC
   include
-    ${controller_interface_INCLUDE_DIRS}
-    ${urdf_INCLUDE_DIRS}
-    ${realtime_tools_INCLUDE_DIRS}
-    ${tf2_INCLUDE_DIRS}
-    ${nav_msgs_INCLUDE_DIRS}
-    ${rclcpp_INCLUDE_DIRS})
+  ${controller_interface_INCLUDE_DIRS}
+  ${urdf_INCLUDE_DIRS}
+  ${realtime_tools_INCLUDE_DIRS}
+  ${tf2_INCLUDE_DIRS}
+  ${nav_msgs_INCLUDE_DIRS}
+  ${rclcpp_INCLUDE_DIRS})
+
+ament_target_dependencies(mecanum_drive_controller PUBLIC
+  ${THIS_PACKAGE_INCLUDE_DEPENDS})
 
 target_compile_definitions(mecanum_drive_controller PRIVATE "MECANUM_DRIVE_CONTROLLER_BUILDING_DLL")
-#pluginlib_export_plugin_description_file(controller_interface mecanum_drive_controller_plugins.xml)
+target_compile_definitions(mecanum_drive_controller PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")
+pluginlib_export_plugin_description_file(controller_interface mecanum_drive_controller_plugin.xml)
 
-install(FILES mecanum_drive_controller_plugins.xml
+install(FILES mecanum_drive_controller_plugin.xml
     DESTINATION share/${PROJECT_NAME})
 
 install(DIRECTORY config launch

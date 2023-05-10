@@ -26,7 +26,7 @@
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
 #include "lifecycle_msgs/msg/state.hpp"
 #include "rclcpp/rclcpp.hpp"
-#include <mecanum_drive_controller/mecanum_drive_controller.h>
+#include <mecanum_drive_controller/mecanum_drive_controller.hpp>
 
 using hardware_interface::HW_IF_POSITION;
 using hardware_interface::HW_IF_VELOCITY;
