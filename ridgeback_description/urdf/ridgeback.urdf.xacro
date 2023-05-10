@@ -71,7 +71,7 @@
       <axis xyz="0 1 0" />
     </joint>
 
-    <transmission name="${prefix}_wheel_trans">
+<!--    <transmission name="${prefix}_wheel_trans">
       <type>transmission_interface/SimpleTransmission</type>
       <joint name="${prefix}_${side}_wheel">
         <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
@@ -79,7 +79,7 @@
       <actuator name="${prefix}_${side}_actuator">
         <mechanicalReduction>1</mechanicalReduction>
       </actuator>
-    </transmission>
+    </transmission>-->
   </xacro:macro>
 
 
@@ -315,7 +315,7 @@
       </xacro:if>
       <xacro:unless value="$(arg use_fake_hardware)">
         <param name="robot_ip">${robot_ip}</param>
-        <plugin>hardware_interface/VelocityJointInterface</plugin>
+        <plugin>ridgeback_base/RidgebackHardware</plugin>
         <param name="gear_ratio">24</param>
         <param name="canbus_dev">can0</param>
         <param name="encoder_cpr">10</param>

@@ -21,11 +21,11 @@ find_package(ament_cmake REQUIRED)
 #catkin_package()
 
 install(DIRECTORY meshes launch urdf
-  DESTINATION share/${PROJECT_NAME}/
+  DESTINATION share/${PROJECT_NAME}
 )
 
 install(PROGRAMS scripts/env_run
-  DESTINATION bin/${PROJECT_NAME}/
+  DESTINATION bin/${PROJECT_NAME}
 )
 
 #if(CATKIN_ENABLE_TESTING)
