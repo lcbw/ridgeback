@@ -18,7 +18,7 @@ def generate_launch_description():
   joystick = LaunchConfiguration('joystick')
   joy_dev = LaunchConfiguration('joy_dev')
 
-  configured_dev = os.getenv('RIDGEBACK_JOY_DEV', '/dev/input/js0')
+  configured_dev = os.getenv('RIDGEBACK_JOY_DEV', 'Wireless Controller')
 #  configured_dev = os.getenv('RIDGEBACK_JOY_DEV', '/dev/input/ps4')
 
 
