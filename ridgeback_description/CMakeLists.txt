@@ -25,7 +25,7 @@ install(DIRECTORY meshes launch urdf
 )
 
 install(PROGRAMS scripts/env_run
-  DESTINATION bin/${PROJECT_NAME}
+  DESTINATION share/${PROJECT_NAME}
 )
 
 #if(CATKIN_ENABLE_TESTING)
