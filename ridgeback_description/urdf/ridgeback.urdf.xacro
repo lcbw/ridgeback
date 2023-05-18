@@ -311,7 +311,7 @@
         <plugin>fake_components/GenericSystem</plugin>
       </xacro:unless>
       <xacro:if value="$(arg physical_robot)">
-        <param name="robot_ip">${robot_ip}</param>
+<!--        <param name="robot_ip">${robot_ip}</param>-->
         <plugin>ridgeback_base/RidgebackHardware</plugin>
         <param name="gear_ratio">24</param>
         <param name="canbus_dev">can0</param>

@@ -46,7 +46,7 @@ def generate_launch_description():
 
     declare_physical_robot_cmd = DeclareLaunchArgument(
         'physical_robot',
-        default_value='true',
+        default_value='false',
         description='Whether or not you run it on the physical robot')
 
     declare_control_yaml_cmd = DeclareLaunchArgument(
