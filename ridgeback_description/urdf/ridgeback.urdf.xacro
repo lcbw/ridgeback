@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <robot name="ridgeback" xmlns:xacro="http://ros.org/wiki/xacro">
-  <xacro:arg name="use_fake_hardware" default="true"/>
+  <xacro:arg name="physical_robot" default="false"/>
+  <xacro:arg name="control_yaml_file" default=""/>
 
   <xacro:property name="PI" value="3.1415926535897931" />
 
@@ -71,15 +72,11 @@
       <axis xyz="0 1 0" />
     </joint>
 
-<!--    <transmission name="${prefix}_wheel_trans">
-      <type>transmission_interface/SimpleTransmission</type>
-      <joint name="${prefix}_${side}_wheel">
-        <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
-      </joint>
-      <actuator name="${prefix}_${side}_actuator">
-        <mechanicalReduction>1</mechanicalReduction>
-      </actuator>
-    </transmission>-->
+    <gazebo reference="${prefix}_${side}_wheel_link">
+      <material>Gazebo/DarkGrey</material>
+      <mu1 value="0.0"/>
+      <mu2 value="0.0"/>
+    </gazebo>
   </xacro:macro>
 
 
@@ -137,7 +134,7 @@
   <link name="chassis_link">
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>
+      <geometry>      
         <mesh filename="package://ridgeback_description/meshes/body.stl"/>
       </geometry>
       <material name="black" />
@@ -310,10 +307,10 @@
 
   <ros2_control name="ridgeback_hardware" type="system">
     <hardware>
-      <xacro:if value="$(arg use_fake_hardware)">
+      <xacro:unless value="$(arg physical_robot)">
         <plugin>fake_components/GenericSystem</plugin>
-      </xacro:if>
-      <xacro:unless value="$(arg use_fake_hardware)">
+      </xacro:unless>
+      <xacro:if value="$(arg physical_robot)">
         <param name="robot_ip">${robot_ip}</param>
         <plugin>ridgeback_base/RidgebackHardware</plugin>
         <param name="gear_ratio">24</param>
@@ -323,7 +320,7 @@
         <param name="gains_p">0.025</param>
         <param name="gains_i">0.005</param>
         <param name="gains_d">0.0</param>
-      </xacro:unless>
+      </xacro:if>
     </hardware>
     <joint name="front_left_wheel">
       <command_interface name="velocity">
@@ -360,12 +357,16 @@
   </ros2_control>
 
   <!-- Bring in simulation data for Gazebo. -->
-  <xacro:include filename="$(find ridgeback_description)/urdf/ridgeback.gazebo" />
+<!--  <xacro:include filename="$(find ridgeback_description)/urdf/ridgeback.gazebo" />-->
+
+  <xacro:unless value="$(arg physical_robot)">
+    <xacro:include filename="$(find ridgeback_description)/urdf/ridgeback-temp.gazebo" />
+  </xacro:unless>
 
   <!-- Optional standard accessories, including their simulation data. The rendering
        of these into the final description is controlled by optenv variables, which
        default each one to off.-->
-  <xacro:include filename="$(find ridgeback_description)/urdf/accessories.urdf.xacro" />
+<!--  <xacro:include filename="$(find ridgeback_description)/urdf/accessories.urdf.xacro" />-->
 
   <!-- Optional custom includes. -->
 <!--  <xacro:include filename="$(optenv RIDGEBACK_URDF_EXTRAS empty.urdf)" />-->

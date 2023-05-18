@@ -20,13 +20,15 @@ find_package(ament_cmake REQUIRED)
 
 #catkin_package()
 
-install(DIRECTORY meshes launch urdf
+install(DIRECTORY env-hooks meshes launch urdf
   DESTINATION share/${PROJECT_NAME}
 )
 
 install(PROGRAMS scripts/env_run
   DESTINATION share/${PROJECT_NAME}
 )
+
+ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/env-hooks/ridgeback_description.dsv.in")
 
 #if(CATKIN_ENABLE_TESTING)
 #  find_package(roslaunch REQUIRED)
