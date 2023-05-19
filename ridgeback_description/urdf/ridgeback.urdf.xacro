@@ -39,7 +39,75 @@
     use_fake_hardware="$(arg use_fake_hardware)"
     initial_positions="${initial_positions}"
     robot_ip="$(arg robot_ip)" /-->
+  <link name="base_link"></link>
 
+  <joint name="base_link_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="base_link"/>
+    <child link="chassis_link" />
+  </joint>
+
+  <link name="chassis_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://ridgeback_description/meshes/body.stl"/>
+      </geometry>
+      <material name="black" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://ridgeback_description/meshes/body-collision.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.012 0.002 0.067" rpy="${PI/2} 0 ${PI/2}"/>
+      <mass value="165.304"/>
+      <inertia
+        ixx="4.4744" ixy="0.03098" ixz="0.003647"
+        iyy="7.1624" iyz="0.1228"
+        izz="4.6155"/>
+    </inertial>
+  </link>
+
+  <joint name="top_link_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="chassis_link"/>
+    <child link="top_link" />
+  </joint>
+
+  <link name="top_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://ridgeback_description/meshes/top.stl" />
+      </geometry>
+      <material name="black" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://ridgeback_description/meshes/top.stl"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="axle_joint" type="fixed">
+    <origin xyz="0 0 ${axle_offset}" rpy="0 0 0" />
+    <parent link="chassis_link"/>
+    <child link="axle_link" />
+  </joint>
+
+  <link name="axle_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 ${PI/2} 0" />
+      <geometry>
+        <mesh filename="package://ridgeback_description/meshes/axle.stl" />
+      </geometry>
+      <material name="black" />
+    </visual>
+  </link>
   <xacro:macro name="wheel" params="prefix side *joint_pose">
     <link name="${prefix}_${side}_wheel_link">
       <visual>
@@ -73,9 +141,13 @@
     </joint>
 
     <gazebo reference="${prefix}_${side}_wheel_link">
-      <material>Gazebo/DarkGrey</material>
-      <mu1 value="0.0"/>
-      <mu2 value="0.0"/>
+    <material>Gazebo/DarkGrey</material>
+    <selfCollide>false</selfCollide>
+    <mu1 value="0.5"/> <!-- mu1 & mu2 are normally 0 for this platform -->
+    <mu2 value="0.5"/>
+    <kp value="10000000.0" />
+    <kd value="1" />
+    <fdir1 value="1 0 0"/>
     </gazebo>
   </xacro:macro>
 
@@ -115,45 +187,19 @@
     </xacro:wheel>
   </xacro:macro>
 
-  <xacro:rocker prefix="front" joint_type="revolute" location="1" >
-    <limit lower="-0.08726" upper="0.08726" effort="0" velocity="0" />
+
+  <xacro:rocker prefix="front" joint_type="fixed" location="1" >
+    <limit effort="0" velocity="0" />
   </xacro:rocker>
+
+<!--  <xacro:rocker prefix="front" joint_type="revolute" location="1" >
+    <limit lower="-0.08726" upper="0.08726" effort="0" velocity="0" />
+  </xacro:rocker> This isn't working currently, wondering if it's a typo-->
 
   <xacro:rocker prefix="rear" joint_type="fixed" location="-1" >
     <limit effort="0" velocity="0" />
   </xacro:rocker>
 
-  <link name="base_link"></link>
-
-  <joint name="base_link_joint" type="fixed">
-    <origin xyz="0 0 0" rpy="0 0 0" />
-    <parent link="base_link"/>
-    <child link="chassis_link" />
-  </joint>
-
-  <link name="chassis_link">
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>      
-        <mesh filename="package://ridgeback_description/meshes/body.stl"/>
-      </geometry>
-      <material name="black" />
-    </visual>
-    <collision>
-      <origin xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="package://ridgeback_description/meshes/body-collision.stl"/>
-      </geometry>
-    </collision>
-    <inertial>
-      <origin xyz="0.012 0.002 0.067" rpy="${PI/2} 0 ${PI/2}"/>
-      <mass value="165.304"/>
-      <inertia
-        ixx="4.4744" ixy="0.03098" ixz="0.003647"
-        iyy="7.1624" iyz="0.1228"
-        izz="4.6155"/>
-    </inertial>
-  </link>
 
   <joint name="right_side_cover_link_joint" type="fixed">
     <origin xyz="0 0 0" rpy="0 0 0" />
@@ -247,43 +293,6 @@
     </visual>
   </link>
 
-  <joint name="top_link_joint" type="fixed">
-    <origin xyz="0 0 0" rpy="0 0 0" />
-    <parent link="chassis_link"/>
-    <child link="top_link" />
-  </joint>
-
-  <link name="top_link">
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>
-        <mesh filename="package://ridgeback_description/meshes/top.stl" />
-      </geometry>
-      <material name="black" />
-    </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>
-        <mesh filename="package://ridgeback_description/meshes/top.stl"/>
-      </geometry>
-    </collision>
-  </link>
-
-  <joint name="axle_joint" type="fixed">
-    <origin xyz="0 0 ${axle_offset}" rpy="0 0 0" />
-    <parent link="chassis_link"/>
-    <child link="axle_link" />
-  </joint>
-
-  <link name="axle_link">
-    <visual>
-      <origin xyz="0 0 0" rpy="0 ${PI/2} 0" />
-      <geometry>
-        <mesh filename="package://ridgeback_description/meshes/axle.stl" />
-      </geometry>
-      <material name="black" />
-    </visual>
-  </link>
 
   <link name="imu_link">
     <inertial>
@@ -308,7 +317,7 @@
   <ros2_control name="ridgeback_hardware" type="system">
     <hardware>
       <xacro:unless value="$(arg physical_robot)">
-        <plugin>fake_components/GenericSystem</plugin>
+        <plugin>gazebo_ros2_control/GazeboSystem</plugin> <!-- instead of fake_components/GenericSystem -->
       </xacro:unless>
       <xacro:if value="$(arg physical_robot)">
 <!--        <param name="robot_ip">${robot_ip}</param>-->

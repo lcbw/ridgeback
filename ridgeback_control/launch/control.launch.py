@@ -26,7 +26,15 @@ def generate_launch_description():
 #    'xacro',' ', xacro_path, ' ', 'physical_robot:=', physical_robot
 #  ])
 
-    robot_description_parameter = {"robot_description": Command(['xacro', ' ', xacro_path])}
+    robot_description_parameter = {"robot_description": Command(['xacro', ' ', xacro_path])} #, ' ', 'physical_robot:=', physical_robot, ' '])}
+
+#    robot_description = Command([
+#        os.path.join(this_share_directory, 'env_run'),
+#        ' ',
+#        os.path.join(this_share_directory, 'urdf', 'configs', 'base'),
+#        ' ',
+#        'xacro', ' ', xacro_path, ' ', 'physical_robot:=', physical_robot, ' ', 'control_yaml_file:=', control_yaml_file
+#    ])
 
     robot_localization_file_path = os.path.join(ridgeback_control_directory, 'config', 'ekf.yaml')
     # Declare the launch arguments
@@ -96,7 +104,7 @@ def generate_launch_description():
     ld.add_action(declare_use_sim_time_cmd)
     ld.add_action(controller_manager_node)
     ld.add_action(spawn_dd_controller)
-    ld.add_action(spawn_mech_controller)
+#    ld.add_action(spawn_mech_controller)
     ld.add_action(spawn_jsb_controller)
     ld.add_action(declare_twist_mux_node)
     ld.add_action(start_robot_localization_cmd)

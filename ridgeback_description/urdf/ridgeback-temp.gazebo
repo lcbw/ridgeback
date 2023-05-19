@@ -1,5 +1,11 @@
 <?xml version="1.0"?>
 <robot>
+  <gazebo>
+    <plugin name="gazebo_ros2_control" filename="libgazebo_ros2_control.so">
+      <parameters>$(arg control_yaml_file)</parameters>
+      <robotNamespace>/</robotNamespace>
+    </plugin>
+  </gazebo>
   <gazebo reference="base_link">
     <turnGravityOff>false</turnGravityOff>
   </gazebo>
@@ -65,10 +71,6 @@
       </plugin>
       <pose>0 0 0 0 0 0</pose>
     </sensor>
-
-    <plugin name="gazebo_ros2_control" filename="libgazebo_ros2_control.so">
-      <robotNamespace>/</robotNamespace>
-    </plugin>
   </gazebo>
 
 </robot>
