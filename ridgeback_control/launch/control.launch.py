@@ -17,26 +17,8 @@ def generate_launch_description():
 
     physical_robot = LaunchConfiguration('physical_robot')
     use_sim_time = LaunchConfiguration('use_sim_time')
+    control_yaml_file = LaunchConfiguration('control_yaml_file')
 
-#  robot_description_parameter = Command([
-#    os.path.join(get_package_share_directory('ridgeback_description'), 'env_run'),
-#    ' ',
-#    os.path.join(this_share_directory, 'urdf', 'configs', 'base'),
-#    ' ',
-#    'xacro',' ', xacro_path, ' ', 'physical_robot:=', physical_robot
-#  ])
-
-    robot_description_parameter = {"robot_description": Command(['xacro', ' ', xacro_path])} #, ' ', 'physical_robot:=', physical_robot, ' '])}
-
-#    robot_description = Command([
-#        os.path.join(this_share_directory, 'env_run'),
-#        ' ',
-#        os.path.join(this_share_directory, 'urdf', 'configs', 'base'),
-#        ' ',
-#        'xacro', ' ', xacro_path, ' ', 'physical_robot:=', physical_robot, ' ', 'control_yaml_file:=', control_yaml_file
-#    ])
-
-    robot_localization_file_path = os.path.join(ridgeback_control_directory, 'config', 'ekf.yaml')
     # Declare the launch arguments
     declare_physical_robot_cmd = DeclareLaunchArgument(
         'physical_robot',
@@ -47,6 +29,33 @@ def generate_launch_description():
         'use_sim_time',
         default_value='false',
         description='Whether or not to use simulation time')
+
+    declare_control_yaml_cmd = DeclareLaunchArgument(
+        'control_yaml_file',
+#        default_value=ridgeback_control_directory+'/config/control.yaml',
+        default_value=control_yaml,
+        description='The config file for gazebo_ros2_control, only needed in simulation')
+
+
+#  robot_description_parameter = Command([
+#    os.path.join(get_package_share_directory('ridgeback_description'), 'env_run'),
+#    ' ',
+#    os.path.join(this_share_directory, 'urdf', 'configs', 'base'),
+#    ' ',
+#    'xacro',' ', xacro_path, ' ', 'physical_robot:=', physical_robot
+#  ])
+
+    robot_description_parameter = {"robot_description": Command(['xacro', ' ', xacro_path, ' ', 'physical_robot:=', physical_robot, ' ', 'control_yaml_file:=', control_yaml_file])}
+
+#    robot_description = Command([
+#        os.path.join(this_share_directory, 'env_run'),
+#        ' ',
+#        os.path.join(this_share_directory, 'urdf', 'configs', 'base'),
+#        ' ',
+#        'xacro', ' ', xacro_path, ' ', 'physical_robot:=', physical_robot, ' ', 'control_yaml_file:=', control_yaml_file
+#    ])
+
+    robot_localization_file_path = os.path.join(ridgeback_control_directory, 'config', 'ekf.yaml')
 
     # Specify the actions
     controller_manager_node = Node(
@@ -102,9 +111,10 @@ def generate_launch_description():
     # Add any conditioned actions
     ld.add_action(declare_physical_robot_cmd)
     ld.add_action(declare_use_sim_time_cmd)
+    ld.add_action(declare_control_yaml_cmd)
     ld.add_action(controller_manager_node)
-    ld.add_action(spawn_dd_controller)
-#    ld.add_action(spawn_mech_controller)
+#    ld.add_action(spawn_dd_controller)
+    ld.add_action(spawn_mech_controller)
     ld.add_action(spawn_jsb_controller)
     ld.add_action(declare_twist_mux_node)
     ld.add_action(start_robot_localization_cmd)
