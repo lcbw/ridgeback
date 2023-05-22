@@ -6,6 +6,7 @@
       <robotNamespace>/</robotNamespace>
     </plugin>
   </gazebo>
+
   <gazebo reference="base_link">
     <turnGravityOff>false</turnGravityOff>
   </gazebo>
